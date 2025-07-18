@@ -47,6 +47,29 @@ LLDP_TTL=120                  # Time to live in seconds
 LLDP_NEIGHBORS_FILE=neighbors.json  # Path to neighbors file (relative to project root or absolute)
 ```
 
+### Configuration Priority and Behavior
+
+1. **Environment Variables**: The service first checks for environment variables (e.g., `LLDP_INTERVAL`)
+2. **.env File**: If no environment variable is set, values from the `.env` file are used
+3. **Default Values**: If neither exists, built-in defaults are used
+
+### Auto Values
+
+When certain parameters are set to `'auto'`, the service will automatically detect system values:
+
+- **LLDP_SYSTEM_NAME=auto**: Uses the Windows hostname (from `socket.gethostname()`)
+- **LLDP_MANAGEMENT_ADDRESS=auto**: Uses the primary IP address of the sending interface, or the system's primary IP if the interface has no IP
+
+### System Description Behavior
+
+Note: The `LLDP_SYSTEM_DESCRIPTION` parameter is currently **ignored**. The service always sends detailed Windows platform information including:
+- Windows version (e.g., "Windows 10")
+- Build number
+- Platform architecture
+- Computer name
+
+This provides more useful information to network administrators than a static description.
+
 ## Usage
 
 ### Capture Management (Required First!)
