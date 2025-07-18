@@ -1,246 +1,212 @@
 # WinLLDP - Windows LLDP Service
 
-A Python-based LLDP (Link Layer Discovery Protocol) service for Windows that sends and receives LLDP packets to discover network neighbors.
+A Windows implementation of LLDP (Link Layer Discovery Protocol) that helps discover network devices and their capabilities. WinLLDP allows Windows machines to participate in network topology discovery by sending and receiving LLDP packets.
 
-## Features
+## What is LLDP?
 
-- Sends LLDP packets periodically with system information
-- Discovers and displays LLDP neighbors with persistent storage
-- Subprocess-based packet capture for better signal handling (Ctrl+C works!)
-- CLI interface for management
-- Configurable via .env file
-- Can run as a Windows service
+LLDP is a vendor-neutral protocol used by network devices to advertise their identity, capabilities, and neighbors. It's commonly used in enterprise networks for:
+- Network topology mapping
+- Troubleshooting connectivity
+- Automated network documentation
+- Switch port identification
 
-## Installation
+## Quick Start for Users
 
-1. Install uv package manager:
+### Download and Install
+
+1. **Download the latest release** from [GitHub Releases](https://github.com/oriolrius/WinLLDP/releases/latest)
+   - Download `winlldp-vX.Y.Z.exe` (for 64-bit Windows)
+   - No installation needed - it's a standalone executable
+
+2. **Place the executable** in a folder of your choice (e.g., `C:\Tools\WinLLDP\`)
+
+3. **Open PowerShell as Administrator** (required for network access)
+
+### Basic Usage
+
+#### See what devices are on your network:
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+# Start discovering network devices
+.\winlldp.exe capture start
+
+# Wait 30-60 seconds for devices to be discovered
+
+# View discovered devices
+.\winlldp.exe show-neighbors
 ```
 
-2. Install dependencies:
-```bash
-uv sync
-```
-
-## Configuration
-
-Copy `env.example` to `.env` and edit it to configure the service:
-
+#### Make your Windows machine discoverable:
 ```powershell
-cp env.example .env  # On Windows, use: copy env.example .env
+# Send LLDP announcement once
+.\winlldp.exe send
+
+# Or install as a service to send continuously
+.\winlldp.exe service install
+.\winlldp.exe service start
 ```
 
-Edit the `.env` file to configure the service:
+## Installation as a Service (Recommended)
 
-```env
-# LLDP Configuration
-LLDP_INTERVAL=30              # Send interval in seconds
-LLDP_INTERFACE=all            # Interface to use (all or specific name)
-LLDP_SYSTEM_NAME=auto         # System name (auto = hostname)
-LLDP_SYSTEM_DESCRIPTION=Windows LLDP Service
-LLDP_PORT_DESCRIPTION=Ethernet Port
-LLDP_MANAGEMENT_ADDRESS=auto  # Management IP (auto = primary IP)
-LLDP_TTL=120                  # Time to live in seconds
+Running WinLLDP as a service ensures your Windows machine is always discoverable on the network.
 
-# File Configuration
-LLDP_NEIGHBORS_FILE=neighbors.json  # Path to neighbors file (relative to project root or absolute)
-```
+### Prerequisites
 
-### Configuration Priority and Behavior
-
-1. **Environment Variables**: The service first checks for environment variables (e.g., `LLDP_INTERVAL`)
-2. **.env File**: If no environment variable is set, values from the `.env` file are used
-3. **Default Values**: If neither exists, built-in defaults are used
-
-### Auto Values
-
-When certain parameters are set to `'auto'`, the service will automatically detect system values:
-
-- **LLDP_SYSTEM_NAME=auto**: Uses the Windows hostname (from `socket.gethostname()`)
-- **LLDP_MANAGEMENT_ADDRESS=auto**: Uses the primary IP address of the sending interface, or the system's primary IP if the interface has no IP
-
-### System Description Behavior
-
-Note: The `LLDP_SYSTEM_DESCRIPTION` parameter is currently **ignored**. The service always sends detailed Windows platform information including:
-- Windows version (e.g., "Windows 10")
-- Build number
-- Platform architecture
-- Computer name
-
-This provides more useful information to network administrators than a static description.
-
-## Usage
-
-### Capture Management (Required First!)
-
-Before viewing neighbors, you must start the capture process:
-
-Start LLDP packet capture (runs in background):
-```bash
-winlldp capture start
-```
-
-Check capture status:
-```bash
-winlldp capture status
-```
-
-View capture log (for debugging):
-```bash
-winlldp capture log
-```
-
-Stop LLDP packet capture:
-```bash
-winlldp capture stop
-```
-
-### Viewing Neighbors
-
-After starting capture, view discovered LLDP neighbors:
-```bash
-# Show neighbors once
-winlldp show-neighbors
-
-# Watch neighbors continuously (updates every 5 seconds)
-winlldp show-neighbors --watch
-```
-
-Clear all discovered neighbors:
-```bash
-winlldp clear-neighbors
-```
-
-### Sending LLDP Packets
-
-Send LLDP packets immediately:
-```bash
-winlldp send
-
-# Send with verbose output
-winlldp send -v
-
-# Send on specific interface
-winlldp send -i "Ethernet 3"
-```
-
-#### Verbose Output
-
-The `-v` flag shows detailed information about the sent LLDP packet:
-- Raw LLDP data in hexadecimal format
-- Decoded packet contents:
-  - Chassis ID (MAC address)
-  - Port ID (MAC address)
-  - TTL (Time To Live)
-  - Port Description
-  - System Name
-  - System Description
-  - Management Address
-  - System Capabilities
-
-Example verbose output:
-```
-Sending LLDP on Ethernet 3 (48:65:ee:12:66:b8)
-  Destination: 01:80:c2:00:00:0e
-  Packet size: 176 bytes
-  Raw LLDP data: 0207044865ee1266b8...
-
-  Packet contents:
-    Chassis ID: 48:65:ee:12:66:b8
-    Port ID: 48:65:ee:12:66:b8
-    TTL: 120s
-    Port Description: Ethernet Port
-    System Name: d0
-    System Description: Windows 10.0.26100 AMD64
-    Management Address: 10.2.99.15
-    System Capabilities: 128
-```
-
-### Other Commands
-
-Show network interfaces:
-```bash
-winlldp show-interfaces
-```
-
-Show configuration:
-```bash
-winlldp show-config
-```
-
-
-## How It Works
-
-1. **Packet Capture**: The receiver runs in a separate subprocess, which allows the main process to remain responsive to Ctrl+C and other signals.
-
-2. **Persistent Storage**: Discovered neighbors are stored in a temporary file, so you can view them even after restarting the CLI.
-
-3. **Background Operation**: The capture process can run in the background - you can start it and close your terminal, then come back later to view neighbors.
-
-## Windows Service Installation
-
-To install as a Windows service (requires Administrator privileges):
-
-### Prerequisites:
-
-1. Install NSSM (if not already installed):
-   ```bash
+1. **Administrator privileges** (required)
+2. **NSSM** - Install via PowerShell:
+   ```powershell
    winget install NSSM
    ```
 
-### Installation:
+### Install and Start Service
 
-Install and configure the service with a single command:
-```bash
-winlldp service install
+```powershell
+# 1. Install the service
+.\winlldp.exe service install
+
+# 2. Start the service
+.\winlldp.exe service start
+
+# 3. Verify it's running
+.\winlldp.exe service status
 ```
 
-This will automatically:
-- Install the WinLLDP service
-- Configure it to use the correct Python interpreter from your virtual environment
-- Set it to start automatically with Windows
-- Configure all necessary paths
+The service will:
+- Start automatically with Windows
+- Send LLDP packets every 30 seconds
+- Continuously discover network neighbors
+- Store discoveries in `neighbors.json`
 
-### Service Management:
+### Verify It's Working
 
-All service operations are integrated into the CLI:
+```powershell
+# Check discovered devices
+.\winlldp.exe show-neighbors
 
-```bash
-# Start the service
-winlldp service start
-
-# Stop the service
-winlldp service stop
-
-# Restart the service
-winlldp service restart
-
-# Check service status
-winlldp service status
-
-# Uninstall the service
-winlldp service uninstall
+# Watch discoveries in real-time
+.\winlldp.exe show-neighbors --watch
 ```
 
-### Logs:
+You should see devices like:
+- Network switches with port information
+- Other servers running LLDP
+- IP phones
+- Wireless access points
 
-- Service wrapper log: `nssm_service.log` in project directory
-- Main service log: `%TEMP%\winlldp_service.log`
-- Capture log: `winlldp capture log`
+## Common Commands
 
-## Requirements
+### Discovery Commands
+```powershell
+# Start network discovery
+.\winlldp.exe capture start
 
-- Windows 10/11 or Windows Server
-- Python 3.11+
-- Administrator privileges (for raw packet access)
-- Npcap or WinPcap (usually installed with Wireshark)
+# View discovered devices
+.\winlldp.exe show-neighbors
+
+# Watch discoveries live (updates every 5 seconds)
+.\winlldp.exe show-neighbors --watch
+
+# Stop discovery
+.\winlldp.exe capture stop
+```
+
+### Service Management
+```powershell
+# Install as Windows service
+.\winlldp.exe service install
+
+# Service control
+.\winlldp.exe service start
+.\winlldp.exe service stop
+.\winlldp.exe service restart
+.\winlldp.exe service status
+
+# Uninstall service
+.\winlldp.exe service uninstall
+```
+
+### Troubleshooting Commands
+```powershell
+# View your network interfaces
+.\winlldp.exe show-interfaces
+
+# Send LLDP packet with details
+.\winlldp.exe send -v
+
+# Check version
+.\winlldp.exe version
+
+# View configuration
+.\winlldp.exe show-config
+```
+
+## Configuration (Optional)
+
+Create a `.env` file in the same directory as `winlldp.exe` to customize behavior:
+
+```env
+# How often to send LLDP packets (seconds)
+LLDP_INTERVAL=30
+
+# Which network interface to use
+LLDP_INTERFACE=all              # Use all interfaces
+#LLDP_INTERFACE="Ethernet 2"    # Use specific interface
+
+# Custom system name (default: your hostname)
+#LLDP_SYSTEM_NAME=MyServer
+
+# Time-to-live for LLDP packets (seconds)
+LLDP_TTL=120
+```
+
+## What You'll See
+
+### Example Output
+```
+LLDP Neighbors:
++-------------+-----------------+------------------+-----------------+---------+-------+----------------+
+| Interface   | Neighbor        | System Name      | Port            | Age     | TTL   | Management IP  |
++=============+=================+==================+=================+=========+=======+================+
+| Ethernet 2  | 00:1b:21:XX:XX  | switch-floor-2   | GigabitEthernet | 2m 15s  | 120s  | 192.168.1.10   |
+|             |                 |                  | 1/0/24          |         |       |                |
++-------------+-----------------+------------------+-----------------+---------+-------+----------------+
+| Ethernet 2  | 00:0c:29:XX:XX  | esxi-host-01     | vmnic2          | 5m 32s  | 120s  | 192.168.1.50   |
++-------------+-----------------+------------------+-----------------+---------+-------+----------------+
+
+Total neighbors: 2
+```
 
 ## Troubleshooting
 
-1. **"Access Denied" errors**: Run as Administrator
-2. **No packets captured**: Check Windows Firewall settings
-3. **Ctrl+C not working**: This should be fixed with the subprocess implementation
+### "Access Denied" Error
+- **Solution**: Run PowerShell as Administrator
+- Right-click PowerShell → "Run as administrator"
+
+### No Devices Discovered
+1. **Check Windows Firewall** - LLDP uses a special protocol (not TCP/UDP)
+2. **Verify network adapter** - Some virtual adapters don't support LLDP
+3. **Wait longer** - Some devices send LLDP every 30-60 seconds
+4. **Check switch configuration** - LLDP might be disabled on the switch port
+
+### Service Won't Start
+1. **Check if running as admin**
+2. **Verify NSSM is installed**: `nssm version`
+3. **Check logs**: Look for `nssm_service.log` in the exe directory
+
+## Requirements
+
+- **Windows 10/11 or Windows Server 2016+** (64-bit)
+- **Administrator privileges** (for raw network access)
+- **NSSM** (for service installation)
+- **Network adapter** that supports promiscuous mode
+
+## For Developers
+
+See [Development Guide](docs/development.md) for building from source.
+
+## License
+
+MIT License - See [LICENSE](LICENSE) file for details.
+
 
 ## License
 
