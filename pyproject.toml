@@ -1,6 +1,6 @@
 [project]
 name = "winlldp"
-version = "v0.10.1"
+version = "v1.0.0"
 description = "LLDP service for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
