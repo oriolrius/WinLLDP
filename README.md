@@ -125,6 +125,38 @@ winlldp send -v
 winlldp send -i "Ethernet 3"
 ```
 
+#### Verbose Output
+
+The `-v` flag shows detailed information about the sent LLDP packet:
+- Raw LLDP data in hexadecimal format
+- Decoded packet contents:
+  - Chassis ID (MAC address)
+  - Port ID (MAC address)
+  - TTL (Time To Live)
+  - Port Description
+  - System Name
+  - System Description
+  - Management Address
+  - System Capabilities
+
+Example verbose output:
+```
+Sending LLDP on Ethernet 3 (48:65:ee:12:66:b8)
+  Destination: 01:80:c2:00:00:0e
+  Packet size: 176 bytes
+  Raw LLDP data: 0207044865ee1266b8...
+
+  Packet contents:
+    Chassis ID: 48:65:ee:12:66:b8
+    Port ID: 48:65:ee:12:66:b8
+    TTL: 120s
+    Port Description: Ethernet Port
+    System Name: d0
+    System Description: Windows 10.0.26100 AMD64
+    Management Address: 10.2.99.15
+    System Capabilities: 128
+```
+
 ### Other Commands
 
 Show network interfaces:

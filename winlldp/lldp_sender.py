@@ -119,10 +119,30 @@ class LLDPSender:
             minimal = getattr(self.config, 'minimal_tlv', False)
             lldp_data = self.create_lldp_packet(interface_info, minimal=minimal)
             if verbose:
-                self.logger.debug(f"Sending LLDP on {interface_info['name']} ({interface_info['mac']})")
-                self.logger.debug(f"  Destination: {self.LLDP_MULTICAST_MAC}")
-                self.logger.debug(f"  Packet size: {len(lldp_data)} bytes")
-                self.logger.debug(f"  Raw LLDP data: {lldp_data.hex()}")
+                print(f"Sending LLDP on {interface_info['name']} ({interface_info['mac']})")
+                print(f"  Destination: {self.LLDP_MULTICAST_MAC}")
+                print(f"  Packet size: {len(lldp_data)} bytes")
+                print(f"  Raw LLDP data: {lldp_data.hex()}")
+                
+                # Decode and display packet contents
+                try:
+                    from .lldp_packet import LLDPPacket
+                    decoded = LLDPPacket.decode(lldp_data)
+                    packet_dict = decoded.to_dict()
+                    print(f"\n  Packet contents:")
+                    print(f"    Chassis ID: {packet_dict.get('chassis_id', 'N/A')}")
+                    print(f"    Port ID: {packet_dict.get('port_id', 'N/A')}")
+                    print(f"    TTL: {packet_dict.get('ttl', 'N/A')}s")
+                    print(f"    Port Description: {packet_dict.get('port_description', 'N/A')}")
+                    print(f"    System Name: {packet_dict.get('system_name', 'N/A')}")
+                    print(f"    System Description: {packet_dict.get('system_description', 'N/A')}")
+                    print(f"    Management Address: {packet_dict.get('management_address', 'N/A')}")
+                    if 'system_capabilities' in packet_dict:
+                        print(f"    System Capabilities: {packet_dict['system_capabilities']}")
+                    print("")
+                except Exception as e:
+                    print(f"    Error decoding packet: {e}")
+                    print("")
             ether = Ether(
                 dst=self.LLDP_MULTICAST_MAC,
                 src=interface_info['mac'],
@@ -131,7 +151,7 @@ class LLDPSender:
             frame = ether / lldp_data
             sendp(frame, iface=interface_info['name'], verbose=verbose)
             if verbose:
-                self.logger.debug(f"  Sent successfully!")
+                print(f"  Sent successfully!")
         except Exception as e:
             self.logger.error(f"Error sending LLDP on {interface_info['name']}: {e}")
 
