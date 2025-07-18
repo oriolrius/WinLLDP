@@ -1,11 +1,7 @@
 import socket
 import platform
 import psutil
-import struct
 from typing import Dict, List, Optional, Tuple
-import ipaddress
-import subprocess
-import re
 
 
 class SystemInfo:
@@ -84,14 +80,6 @@ class SystemInfo:
         except Exception:
             return None
 
-    @staticmethod
-    def get_interface_by_ip(ip: str) -> Optional[Dict[str, any]]:
-        """Find interface information by IP address"""
-        interfaces = SystemInfo.get_interfaces()
-        for interface in interfaces:
-            if ip in interface['ipv4']:
-                return interface
-        return None
 
     @staticmethod
     def get_interface_by_name(name: str) -> Optional[Dict[str, any]]:
@@ -142,10 +130,6 @@ class SystemInfo:
         
         return 0
 
-    @staticmethod
-    def format_mac_address(mac_bytes: bytes) -> str:
-        """Format MAC address bytes as a string"""
-        return ':'.join(f'{b:02x}' for b in mac_bytes)
 
     @staticmethod
     def ip_to_bytes(ip_str: str) -> bytes:

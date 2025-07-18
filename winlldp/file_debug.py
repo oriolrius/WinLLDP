@@ -3,7 +3,6 @@
 import os
 import sys
 import inspect
-from functools import wraps
 from contextlib import contextmanager
 try:
     from .logger import get_logger
@@ -83,22 +82,3 @@ def debug_open(filename, mode='r', *args, **kwargs):
         except:
             pass
 
-def patch_file_operations():
-    # Monkey-patch file operations in all loaded modules to add debug logging
-    import winlldp
-    
-    # List of modules to patch
-    modules_to_patch = [
-        'winlldp.lldp_receiver',
-        'winlldp.service_wrapper',
-        'winlldp.cli',
-        'winlldp.config',
-        'winlldp.logger'
-    ]
-    
-    for module_name in modules_to_patch:
-        if module_name in sys.modules:
-            module = sys.modules[module_name]
-            # Replace the built-in open with our debug version
-            module.open = debug_open
-            logger.debug(f"Patched file operations in {module_name}")

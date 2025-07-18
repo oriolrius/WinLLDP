@@ -7,20 +7,15 @@ Bootstrap script for PyInstaller to ensure all dependencies are loaded
 import sys
 import os
 
-# Standard library imports
+# Standard library imports - only what's actually needed
 import json
 import logging
 import time
-import datetime
-import pathlib
-import signal
 import subprocess
 import threading
-import multiprocessing
 import socket
 import struct
 import platform
-import ctypes
 
 # Third-party imports - these need to be imported before our modules
 try:
@@ -71,15 +66,10 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    import win32api
-    import win32con
-    import win32event
-    import win32service
+    # Only import what's actually used by the service functionality
     import win32serviceutil
     import servicemanager
-    import pywintypes
 except ImportError as e:
-    print(f"Failed to import pywin32: {e}")
     # Not fatal as not all commands need Windows service support
     pass
 
