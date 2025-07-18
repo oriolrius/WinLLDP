@@ -86,7 +86,7 @@ jobs:
           
           ### What's New
           - See commits for changes
-        files: dist\winlldp-v${{ inputs.version }}.exe
+        files: dist/winlldp-v${{ inputs.version }}.exe
         prerelease: ${{ inputs.prerelease }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
