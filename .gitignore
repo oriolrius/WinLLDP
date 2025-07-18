@@ -1,3 +1,7 @@
+# winlldp .gitignore
+neighbors.json
+capture.pid
+nssm_service.log
 # Python
 __pycache__/
 *.pyc

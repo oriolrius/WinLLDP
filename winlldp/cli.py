@@ -2,6 +2,8 @@ import click
 import time
 import os
 import tempfile
+import subprocess
+import sys
 from tabulate import tabulate
 from .config import Config
 from .lldp_sender import LLDPSender
@@ -308,9 +310,6 @@ def service():
 @service.command('install')
 def service_install():
     """Install as Windows service"""
-    import subprocess
-    import sys
-    import os
     
     try:
         # Check if NSSM is available
@@ -329,42 +328,93 @@ def service_install():
     # Get paths
     python_exe = sys.executable
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    run_service_script = os.path.join(project_dir, 'run_service.py')
-    
-    # Check if run_service.py exists
-    if not os.path.exists(run_service_script):
-        click.echo(f"Error: {run_service_script} not found", err=True)
-        return
     
     click.echo("Installing WinLLDP service...")
     
-    # Install the service
-    result = subprocess.run(['nssm', 'install', 'WinLLDP'], capture_output=True, text=True)
-    if result.returncode != 0 and "already exists" not in result.stderr:
+    # First check if service exists
+    check_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+    service_exists = check_result.returncode == 0
+    
+    if service_exists:
+        click.echo("Service already exists, updating configuration...")
+        # Stop the service first
+        subprocess.run(['nssm', 'stop', 'WinLLDP'], capture_output=True)
+        # Wait for service to stop
+        click.echo("Waiting for service to stop...", nl=False)
+        for i in range(30):
+            status_check = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+            if 'STOPPED' in status_check.stdout or status_check.returncode != 0:
+                click.echo(" OK")
+                break
+            click.echo(".", nl=False)
+            time.sleep(0.5)
+        else:
+            click.echo(" TIMEOUT")
+        
+        # Remove the service
+        subprocess.run(['nssm', 'remove', 'WinLLDP', 'confirm'], capture_output=True)
+        # Wait for removal
+        click.echo("Waiting for service removal...", nl=False)
+        for i in range(20):
+            check = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+            if check.returncode != 0:  # Service not found = removed
+                click.echo(" OK")
+                break
+            click.echo(".", nl=False)
+            time.sleep(0.5)
+        else:
+            click.echo(" TIMEOUT")
+    
+    # Install the service with all parameters
+    install_cmd = [
+        'nssm', 'install', 'WinLLDP',
+        python_exe,
+        '-m', 'winlldp.service_wrapper'
+    ]
+    
+    result = subprocess.run(install_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
         click.echo(f"Error installing service: {result.stderr}", err=True)
         return
-    elif "already exists" in result.stderr:
-        click.echo("Service already exists, updating configuration...")
     
-    # Configure the service
+    # Wait for service to be registered in Windows
+    click.echo("Waiting for service registration...", nl=False)
+    max_attempts = 30  # 30 seconds timeout
+    for i in range(max_attempts):
+        check = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+        if check.returncode == 0:
+            click.echo(" OK")
+            break
+        click.echo(".", nl=False)
+        time.sleep(1)
+    else:
+        click.echo(" TIMEOUT")
+        click.echo("Error: Service installation timed out", err=True)
+        return
+    
     commands = [
-        ['nssm', 'set', 'WinLLDP', 'Application', python_exe],
-        ['nssm', 'set', 'WinLLDP', 'AppParameters', run_service_script],
         ['nssm', 'set', 'WinLLDP', 'AppDirectory', project_dir],
         ['nssm', 'set', 'WinLLDP', 'DisplayName', 'Windows LLDP Service'],
         ['nssm', 'set', 'WinLLDP', 'Description', 'Link Layer Discovery Protocol service for Windows'],
         ['nssm', 'set', 'WinLLDP', 'Start', 'SERVICE_AUTO_START'],
-    ]
-    
+        ['nssm', 'set', 'WinLLDP', 'AppNoConsole', '1'],
+        ['nssm', 'set', 'WinLLDP', 'AppRestartDelay', '5000'],
+        ['nssm', 'set', 'WinLLDP', 'AppThrottle', '1500'],
+        ['nssm', 'set', 'WinLLDP', 'AppRotateOnline', '1'],
+        ['nssm', 'set', 'WinLLDP', 'AppRotateBytes', str(10 * 1024 * 1024)],
+        ['nssm', 'set', 'WinLLDP', 'AppStopMethodSkip', '0'],
+]
+
     for cmd in commands:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
-            click.echo(f"Error setting parameter: {result.stderr}", err=True)
-            return
+            # Don't fail on description setting errors (common on some Windows versions)
+            if 'Description' not in ' '.join(cmd):
+                click.echo(f"Warning: {' '.join(cmd[3:5])}: {result.stderr.strip()}")
     
     click.echo("Service installed successfully!")
     click.echo(f"  Python: {python_exe}")
-    click.echo(f"  Script: {run_service_script}")
+    click.echo(f"  Module: winlldp.service_wrapper")
     click.echo(f"  Directory: {project_dir}")
     click.echo("")
     click.echo("To start the service, run: winlldp service start")
