@@ -45,6 +45,14 @@ jobs:
       run: |
         $version = "${{ steps.get_version.outputs.VERSION }}"
         Move-Item -Path "dist\winlldp.exe" -Destination "dist\winlldp-$version.exe"
+        # Verify the file exists
+        if (Test-Path "dist\winlldp-$version.exe") {
+          Write-Host "✓ Executable renamed to: winlldp-$version.exe"
+          Get-ChildItem dist\
+        } else {
+          Write-Host "✗ Failed to rename executable"
+          exit 1
+        }
     
     - name: Create Release
       uses: softprops/action-gh-release@v2
