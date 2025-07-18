@@ -298,13 +298,40 @@ finally:
         
         # Start subprocess detached
         # Keep stderr pipe for error checking, but not stdout
-        self.subprocess = subprocess.Popen(
-            [sys.executable, '-c', capture_script],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-            text=True,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
-        )
+        
+        # Check if running from PyInstaller bundle
+        if getattr(sys, 'frozen', False):
+            # We're running from a PyInstaller bundle
+            # Create a temporary Python script and execute it with the bundled Python
+            import tempfile
+            script_fd, script_path = tempfile.mkstemp(suffix='.py', text=True)
+            try:
+                with os.fdopen(script_fd, 'w') as f:
+                    f.write(capture_script)
+                
+                # For frozen executables, we need to use a different approach
+                # Write script to file and run via capture-internal command
+                self.subprocess = subprocess.Popen(
+                    [sys.executable, 'capture-internal', script_path],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+                )
+            except:
+                # Clean up on error
+                if os.path.exists(script_path):
+                    os.unlink(script_path)
+                raise
+        else:
+            # Normal Python execution
+            self.subprocess = subprocess.Popen(
+                [sys.executable, '-c', capture_script],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+            )
         
         # Save subprocess info
         LLDPReceiver._subprocess_info = self.subprocess

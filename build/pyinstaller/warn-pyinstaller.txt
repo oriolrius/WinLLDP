@@ -1,0 +1,75 @@
+
+This file lists modules PyInstaller was not able to find. This does not
+necessarily mean this module is required for running your program. Python and
+Python 3rd-party packages include a lot of conditional or optional modules. For
+example the module 'ntpath' only exists on Windows, whereas the module
+'posixpath' only exists on Posix systems.
+
+Types if import:
+* top-level: imported at the top-level - look at these first
+* conditional: imported within an if-statement
+* delayed: imported within a function
+* optional: imported within a try-except-statement
+
+IMPORTANT: Do NOT post this list to the issue-tracker. Use it as a basis for
+            tracking down the missing module yourself. Thanks!
+
+missing module named _posixshmem - imported by multiprocessing.resource_tracker (conditional), multiprocessing.shared_memory (conditional)
+missing module named _posixsubprocess - imported by subprocess (conditional), multiprocessing.util (delayed)
+missing module named 'org.python' - imported by copy (optional), xml.sax (delayed, conditional)
+missing module named _frozen_importlib_external - imported by importlib._bootstrap (delayed), importlib (optional), importlib.abc (optional), zipimport (top-level)
+excluded module named _frozen_importlib - imported by importlib (optional), importlib.abc (optional), zipimport (top-level)
+missing module named pwd - imported by posixpath (delayed, conditional, optional), shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional), webbrowser (delayed), getpass (delayed), psutil (optional), netrc (delayed, conditional)
+missing module named grp - imported by shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional)
+missing module named posix - imported by os (conditional, optional), posixpath (optional), shutil (conditional), importlib._bootstrap_external (conditional)
+missing module named resource - imported by posix (top-level)
+missing module named multiprocessing.get_context - imported by multiprocessing (top-level), multiprocessing.pool (top-level), multiprocessing.managers (top-level), multiprocessing.sharedctypes (top-level)
+missing module named multiprocessing.TimeoutError - imported by multiprocessing (top-level), multiprocessing.pool (top-level)
+missing module named multiprocessing.set_start_method - imported by multiprocessing (top-level), multiprocessing.spawn (top-level)
+missing module named multiprocessing.get_start_method - imported by multiprocessing (top-level), multiprocessing.spawn (top-level)
+missing module named pyimod02_importers - imported by D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py (delayed)
+missing module named org - imported by pickle (optional)
+missing module named _scproxy - imported by urllib.request (conditional)
+missing module named termios - imported by click._termui_impl (conditional), tty (top-level), getpass (optional), scapy.utils (delayed, optional)
+missing module named 'java.lang' - imported by platform (delayed, optional), xml.sax._exceptions (conditional)
+missing module named multiprocessing.BufferTooShort - imported by multiprocessing (top-level), multiprocessing.connection (top-level)
+missing module named multiprocessing.AuthenticationError - imported by multiprocessing (top-level), multiprocessing.connection (top-level)
+missing module named 'IPython.terminal' - imported by scapy.themes (delayed, optional)
+missing module named 'prompt_toolkit.completion' - imported by scapy.utils (delayed)
+missing module named fcntl - imported by subprocess (optional), scapy.arch.linux (top-level), scapy.arch.bpf.core (top-level), scapy.arch.bpf.supersocket (top-level), scapy.arch.libpcap (conditional), scapy.arch.unix (top-level), scapy.utils (delayed, optional), scapy.layers.tuntap (top-level)
+missing module named 'cryptography.hazmat' - imported by scapy.layers.tls.crypto.pkcs1 (conditional), scapy.layers.tls.crypto.hkdf (conditional), scapy.layers.tls.cert (conditional, optional), scapy.layers.tls.crypto.groups (conditional), scapy.layers.tls.keyexchange (conditional), scapy.layers.tls.crypto.cipher_aead (conditional), scapy.layers.tls.crypto.cipher_block (conditional, optional), scapy.layers.tls.crypto.cipher_stream (conditional, optional), scapy.layers.tls.keyexchange_tls13 (conditional), scapy.layers.tls.handshake (conditional), scapy.config (delayed, optional), scapy.libs.rfc3961 (optional), scapy.layers.smb2 (delayed, conditional), scapy.layers.ntlm (delayed, optional), scapy.layers.dot11 (conditional, optional), scapy.layers.ipsec (conditional, optional), scapy.layers.msrpce.msnrpc (conditional), scapy.layers.tls.automaton_srv (conditional)
+missing module named cryptography - imported by scapy.layers.tls.crypto.pkcs1 (conditional), scapy.config (delayed, optional)
+missing module named 'cryptography.exceptions' - imported by scapy.layers.tls.cert (conditional), scapy.layers.tls.crypto.cipher_aead (conditional), scapy.layers.ipsec (conditional)
+missing module named 'cryptography.utils' - imported by scapy.layers.tls.crypto.cipher_block (conditional), scapy.layers.ipsec (conditional)
+missing module named asyncio.DefaultEventLoopPolicy - imported by asyncio (delayed, conditional), asyncio.events (delayed, conditional)
+missing module named prompt_toolkit - imported by scapy.utils (delayed, conditional, optional), scapy.packet (delayed, conditional, optional), scapy.layers.kerberos (delayed, conditional, optional), scapy.layers.smbclient (delayed, conditional)
+missing module named 'matplotlib.lines' - imported by scapy.libs.matplot (optional)
+excluded module named matplotlib - imported by scapy.libs.matplot (optional), scapy.layers.inet (delayed)
+missing module named pyx - imported by scapy.base_classes (conditional, optional), scapy.plist (optional), scapy.libs.test_pyx (optional), scapy.packet (optional)
+missing module named 'bpython.curtsies' - imported by scapy.main (delayed, conditional)
+missing module named 'ptpython.repl' - imported by scapy.main (delayed, conditional)
+missing module named traitlets - imported by scapy.main (delayed, conditional, optional)
+missing module named ptpython - imported by scapy.main (delayed, conditional)
+missing module named bpython - imported by scapy.main (delayed, conditional)
+missing module named readline - imported by code (delayed, conditional, optional), rlcompleter (optional), scapy.main (delayed, conditional, optional)
+missing module named IPython - imported by dotenv.ipython (top-level), scapy.arch.windows (delayed, optional), scapy.main (delayed, conditional, optional)
+missing module named collections.Iterable - imported by collections (optional), scapy.layers.dhcp (optional)
+missing module named 'win32com.gen_py' - imported by win32com (conditional, optional)
+missing module named __pypy__ - imported by scapy.config (delayed, optional)
+missing module named __builtin__ - imported by scapy.config (delayed, optional)
+missing module named 'prompt_toolkit.formatted_text' - imported by scapy.packet (delayed, conditional)
+missing module named 'prompt_toolkit.shortcuts' - imported by scapy.packet (delayed, conditional)
+missing module named 'matplotlib.collections' - imported by scapy.layers.inet (delayed)
+missing module named cartopy - imported by scapy.layers.inet (delayed, optional)
+missing module named 'geoip2.errors' - imported by scapy.layers.inet (delayed, optional)
+missing module named geoip2 - imported by scapy.layers.inet (delayed, optional)
+missing module named vpython - imported by scapy.layers.inet (delayed)
+missing module named zstandard - imported by scapy.layers.http (optional)
+missing module named lzw - imported by scapy.layers.http (optional)
+missing module named brotli - imported by scapy.layers.http (optional)
+missing module named wcwidth - imported by tabulate (optional)
+missing module named 'IPython.core' - imported by dotenv.ipython (top-level)
+missing module named typing_extensions - imported by click._winconsole (conditional, optional), click.utils (conditional), click.types (conditional), click.decorators (conditional)
+missing module named vms_lib - imported by platform (delayed, optional)
+missing module named java - imported by platform (delayed)
+missing module named _winreg - imported by platform (delayed, optional)
