@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from winlldp.config import Config
 from winlldp.lldp_sender import LLDPSender
 from winlldp.lldp_receiver import LLDPReceiver
+from winlldp.file_debug import debug_open as open
 
 
 def main():

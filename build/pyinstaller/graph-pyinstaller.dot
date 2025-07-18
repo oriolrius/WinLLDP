@@ -205,6 +205,7 @@ charset="UTF-8";
 	"D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py" [label="<f0> Script| <f1> D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py",shape="record"];
 	"pyimod02_importers" [label="<f0> MissingModule| <f1> pyimod02_importers",shape="record"];
 	"D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_inspect.py" [label="<f0> Script| <f1> D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_inspect.py",shape="record"];
+	"D:\OneDrive\Documentos\workspace\winlldp\pyi_rth_suppress_warnings.py" [label="<f0> Script| <f1> D:\OneDrive\Documentos\workspace\winlldp\pyi_rth_suppress_warnings.py",shape="record"];
 	"multiprocessing.connection" [label="<f0> SourceModule| <f1> multiprocessing.connection",shape="record"];
 	"xmlrpc.client" [label="<f0> SourceModule| <f1> xmlrpc.client",shape="record"];
 	"xmlrpc" [label="<f0> Package| <f1> xmlrpc",shape="record"];
@@ -410,6 +411,10 @@ charset="UTF-8";
 	"scapy.layers" [label="<f0> Package| <f1> scapy.layers",shape="record"];
 	"winlldp.cli" [label="<f0> SourceModule| <f1> winlldp.cli",shape="record"];
 	"winlldp" [label="<f0> Package| <f1> winlldp",shape="record"];
+	"winlldp.capture_subprocess" [label="<f0> SourceModule| <f1> winlldp.capture_subprocess",shape="record"];
+	"winlldp.lldp_packet" [label="<f0> SourceModule| <f1> winlldp.lldp_packet",shape="record"];
+	"winlldp.file_debug" [label="<f0> SourceModule| <f1> winlldp.file_debug",shape="record"];
+	"winlldp.logger" [label="<f0> SourceModule| <f1> winlldp.logger",shape="record"];
 	"winlldp.system_info" [label="<f0> SourceModule| <f1> winlldp.system_info",shape="record"];
 	"win32com.client" [label="<f0> Package| <f1> win32com.client",shape="record"];
 	"win32com.client.makepy" [label="<f0> SourceModule| <f1> win32com.client.makepy",shape="record"];
@@ -444,8 +449,6 @@ charset="UTF-8";
 	"'win32com.gen_py'" [label="<f0> MissingModule| <f1> 'win32com.gen_py'",shape="record"];
 	"pythoncom" [label="<f0> SourceModule| <f1> pythoncom",shape="record"];
 	"winlldp.lldp_receiver" [label="<f0> SourceModule| <f1> winlldp.lldp_receiver",shape="record"];
-	"winlldp.logger" [label="<f0> SourceModule| <f1> winlldp.logger",shape="record"];
-	"winlldp.lldp_packet" [label="<f0> SourceModule| <f1> winlldp.lldp_packet",shape="record"];
 	"winlldp.lldp_sender" [label="<f0> SourceModule| <f1> winlldp.lldp_sender",shape="record"];
 	"winlldp.config" [label="<f0> SourceModule| <f1> winlldp.config",shape="record"];
 	"pywintypes" [label="<f0> SourceModule| <f1> pywintypes",shape="record"];
@@ -608,18 +611,33 @@ charset="UTF-8";
 	"subprocess" [label="<f0> SourceModule| <f1> subprocess",shape="record"];
 	"signal" [label="<f0> SourceModule| <f1> signal",shape="record"];
 	"_signal" [label="<f0> BuiltinModule| <f1> _signal",shape="record"];
-	"enum" [label="<f0> SourceModule| <f1> enum",shape="record"];
+	"reprlib" [label="<f0> SourceModule| <f1> reprlib",shape="record"];
 	"posixpath" [label="<f0> SourceModule| <f1> posixpath",shape="record"];
 	"stat" [label="<f0> SourceModule| <f1> stat",shape="record"];
 	"_stat" [label="<f0> BuiltinModule| <f1> _stat",shape="record"];
+	"operator" [label="<f0> SourceModule| <f1> operator",shape="record"];
+	"os" [label="<f0> SourceModule| <f1> os",shape="record"];
+	"genericpath" [label="<f0> SourceModule| <f1> genericpath",shape="record"];
+	"linecache" [label="<f0> SourceModule| <f1> linecache",shape="record"];
+	"locale" [label="<f0> SourceModule| <f1> locale",shape="record"];
+	"_locale" [label="<f0> BuiltinModule| <f1> _locale",shape="record"];
+	"copyreg" [label="<f0> SourceModule| <f1> copyreg",shape="record"];
+	"sre_constants" [label="<f0> SourceModule| <f1> sre_constants",shape="record"];
+	"sre_parse" [label="<f0> SourceModule| <f1> sre_parse",shape="record"];
+	"heapq" [label="<f0> SourceModule| <f1> heapq",shape="record"];
+	"_heapq" [label="<f0> BuiltinModule| <f1> _heapq",shape="record"];
+	"types" [label="<f0> SourceModule| <f1> types",shape="record"];
+	"io" [label="<f0> SourceModule| <f1> io",shape="record"];
 	"re._parser" [label="<f0> SourceModule| <f1> re._parser",shape="record"];
 	"re._constants" [label="<f0> SourceModule| <f1> re._constants",shape="record"];
 	"re._compiler" [label="<f0> SourceModule| <f1> re._compiler",shape="record"];
 	"re._casefix" [label="<f0> SourceModule| <f1> re._casefix",shape="record"];
 	"re" [label="<f0> Package| <f1> re",shape="record"];
-	"traceback" [label="<f0> SourceModule| <f1> traceback",shape="record"];
-	"locale" [label="<f0> SourceModule| <f1> locale",shape="record"];
-	"_locale" [label="<f0> BuiltinModule| <f1> _locale",shape="record"];
+	"_weakrefset" [label="<f0> SourceModule| <f1> _weakrefset",shape="record"];
+	"keyword" [label="<f0> SourceModule| <f1> keyword",shape="record"];
+	"functools" [label="<f0> SourceModule| <f1> functools",shape="record"];
+	"_functools" [label="<f0> BuiltinModule| <f1> _functools",shape="record"];
+	"sre_compile" [label="<f0> SourceModule| <f1> sre_compile",shape="record"];
 	"encodings.zlib_codec" [label="<f0> SourceModule| <f1> encodings.zlib_codec",shape="record"];
 	"encodings.uu_codec" [label="<f0> SourceModule| <f1> encodings.uu_codec",shape="record"];
 	"encodings.utf_8_sig" [label="<f0> SourceModule| <f1> encodings.utf_8_sig",shape="record"];
@@ -750,33 +768,18 @@ charset="UTF-8";
 	"encodings.ascii" [label="<f0> SourceModule| <f1> encodings.ascii",shape="record"];
 	"encodings.aliases" [label="<f0> SourceModule| <f1> encodings.aliases",shape="record"];
 	"encodings" [label="<f0> Package| <f1> encodings",shape="record"];
-	"functools" [label="<f0> SourceModule| <f1> functools",shape="record"];
-	"_functools" [label="<f0> BuiltinModule| <f1> _functools",shape="record"];
-	"os" [label="<f0> SourceModule| <f1> os",shape="record"];
-	"sre_parse" [label="<f0> SourceModule| <f1> sre_parse",shape="record"];
-	"_weakrefset" [label="<f0> SourceModule| <f1> _weakrefset",shape="record"];
-	"abc" [label="<f0> SourceModule| <f1> abc",shape="record"];
-	"_py_abc" [label="<f0> SourceModule| <f1> _py_abc",shape="record"];
-	"_abc" [label="<f0> BuiltinModule| <f1> _abc",shape="record"];
-	"types" [label="<f0> SourceModule| <f1> types",shape="record"];
-	"copyreg" [label="<f0> SourceModule| <f1> copyreg",shape="record"];
-	"operator" [label="<f0> SourceModule| <f1> operator",shape="record"];
-	"genericpath" [label="<f0> SourceModule| <f1> genericpath",shape="record"];
-	"weakref" [label="<f0> SourceModule| <f1> weakref",shape="record"];
-	"sre_compile" [label="<f0> SourceModule| <f1> sre_compile",shape="record"];
-	"keyword" [label="<f0> SourceModule| <f1> keyword",shape="record"];
-	"_collections_abc" [label="<f0> SourceModule| <f1> _collections_abc",shape="record"];
-	"heapq" [label="<f0> SourceModule| <f1> heapq",shape="record"];
-	"_heapq" [label="<f0> BuiltinModule| <f1> _heapq",shape="record"];
-	"collections.abc" [label="<f0> SourceModule| <f1> collections.abc",shape="record"];
-	"collections" [label="<f0> Package| <f1> collections",shape="record"];
-	"io" [label="<f0> SourceModule| <f1> io",shape="record"];
 	"warnings" [label="<f0> SourceModule| <f1> warnings",shape="record"];
 	"tracemalloc" [label="<f0> SourceModule| <f1> tracemalloc",shape="record"];
 	"_tracemalloc" [label="<f0> BuiltinModule| <f1> _tracemalloc",shape="record"];
-	"linecache" [label="<f0> SourceModule| <f1> linecache",shape="record"];
-	"reprlib" [label="<f0> SourceModule| <f1> reprlib",shape="record"];
-	"sre_constants" [label="<f0> SourceModule| <f1> sre_constants",shape="record"];
+	"traceback" [label="<f0> SourceModule| <f1> traceback",shape="record"];
+	"abc" [label="<f0> SourceModule| <f1> abc",shape="record"];
+	"_py_abc" [label="<f0> SourceModule| <f1> _py_abc",shape="record"];
+	"_abc" [label="<f0> BuiltinModule| <f1> _abc",shape="record"];
+	"_collections_abc" [label="<f0> SourceModule| <f1> _collections_abc",shape="record"];
+	"collections.abc" [label="<f0> SourceModule| <f1> collections.abc",shape="record"];
+	"collections" [label="<f0> Package| <f1> collections",shape="record"];
+	"weakref" [label="<f0> SourceModule| <f1> weakref",shape="record"];
+	"enum" [label="<f0> SourceModule| <f1> enum",shape="record"];
 	"_posixsubprocess" [label="<f0> MissingModule| <f1> _posixsubprocess",shape="record"];
 	"datetime" [label="<f0> SourceModule| <f1> datetime",shape="record"];
 	"_strptime" [label="<f0> SourceModule| <f1> _strptime",shape="record"];
@@ -790,214 +793,34 @@ charset="UTF-8";
 	"_codecs" [label="<f0> BuiltinModule| <f1> _codecs",shape="record"];
 	"time" [label="<f0> BuiltinModule| <f1> time",shape="record"];
 	"gc" [label="<f0> BuiltinModule| <f1> gc",shape="record"];
-	subgraph "cluster_scapy.contrib.rtps" {
-		label="scapy.contrib.rtps";
-		"scapy.contrib.rtps" -> "scapy.contrib.rtps.rtps" [style="dotted"];
-		"scapy.contrib.rtps" -> "scapy.contrib.rtps.pid_types" [style="dotted"];
-		"scapy.contrib.rtps" -> "scapy.contrib.rtps.common_types" [style="dotted"];
+	subgraph "cluster_scapy.layers.msrpce.raw" {
+		label="scapy.layers.msrpce.raw";
+		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ept" [style="dotted"];
+		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_dcom" [style="dotted"];
+		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_drsr" [style="dotted"];
+		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_nrpc" [style="dotted"];
+		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_samr" [style="dotted"];
+		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_srvs" [style="dotted"];
+		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_wkst" [style="dotted"];
 	}
-	subgraph "cluster_pywin" {
-		label="pywin";
-		"pywin" -> "pywin.mfc" [style="dotted"];
-		"pywin" -> "pywin.dialogs" [style="dotted"];
+	subgraph "cluster_ctypes" {
+		label="ctypes";
+		"ctypes" -> "ctypes._endian" [style="dotted"];
+		"ctypes" -> "ctypes.wintypes" [style="dotted"];
+		"ctypes" -> "ctypes.util" [style="dotted"];
+		"ctypes" -> "ctypes._aix" [style="dotted"];
+		"ctypes" -> "ctypes.macholib" [style="dotted"];
 	}
-	subgraph "cluster_winlldp" {
-		label="winlldp";
-		"winlldp" -> "winlldp.cli" [style="dotted"];
-		"winlldp" -> "winlldp.config" [style="dotted"];
-		"winlldp" -> "winlldp.lldp_sender" [style="dotted"];
-		"winlldp" -> "winlldp.lldp_receiver" [style="dotted"];
-		"winlldp" -> "winlldp.system_info" [style="dotted"];
-		"winlldp" -> "winlldp.lldp_packet" [style="dotted"];
-		"winlldp" -> "winlldp.logger" [style="dotted"];
-	}
-	subgraph "cluster_pywin32_system32" {
-		label="pywin32_system32";
-	}
-	subgraph "cluster_asyncio" {
-		label="asyncio";
-		"asyncio" -> "asyncio.constants" [style="dotted"];
-		"asyncio" -> "asyncio.coroutines" [style="dotted"];
-		"asyncio" -> "asyncio.format_helpers" [style="dotted"];
-		"asyncio" -> "asyncio.DefaultEventLoopPolicy" [style="dotted"];
-		"asyncio" -> "asyncio.events" [style="dotted"];
-		"asyncio" -> "asyncio.exceptions" [style="dotted"];
-		"asyncio" -> "asyncio.base_futures" [style="dotted"];
-		"asyncio" -> "asyncio.futures" [style="dotted"];
-		"asyncio" -> "asyncio.protocols" [style="dotted"];
-		"asyncio" -> "asyncio.transports" [style="dotted"];
-		"asyncio" -> "asyncio.sslproto" [style="dotted"];
-		"asyncio" -> "asyncio.mixins" [style="dotted"];
-		"asyncio" -> "asyncio.base_tasks" [style="dotted"];
-		"asyncio" -> "asyncio.locks" [style="dotted"];
-		"asyncio" -> "asyncio.tasks" [style="dotted"];
-		"asyncio" -> "asyncio.staggered" [style="dotted"];
-		"asyncio" -> "asyncio.trsock" [style="dotted"];
-		"asyncio" -> "asyncio.base_events" [style="dotted"];
-		"asyncio" -> "asyncio.runners" [style="dotted"];
-		"asyncio" -> "asyncio.queues" [style="dotted"];
-		"asyncio" -> "asyncio.streams" [style="dotted"];
-		"asyncio" -> "asyncio.subprocess" [style="dotted"];
-		"asyncio" -> "asyncio.taskgroups" [style="dotted"];
-		"asyncio" -> "asyncio.timeouts" [style="dotted"];
-		"asyncio" -> "asyncio.threads" [style="dotted"];
-		"asyncio" -> "asyncio.base_subprocess" [style="dotted"];
-		"asyncio" -> "asyncio.proactor_events" [style="dotted"];
-		"asyncio" -> "asyncio.selector_events" [style="dotted"];
-		"asyncio" -> "asyncio.windows_utils" [style="dotted"];
-		"asyncio" -> "asyncio.windows_events" [style="dotted"];
-		"asyncio" -> "asyncio.unix_events" [style="dotted"];
-		"asyncio" -> "asyncio.log" [style="dotted"];
+	subgraph "cluster_collections" {
+		label="collections";
+		"collections" -> "collections.Iterable" [style="dotted"];
+		"collections" -> "collections.abc" [style="dotted"];
 	}
 	subgraph "cluster_ctypes.macholib" {
 		label="ctypes.macholib";
 		"ctypes.macholib" -> "ctypes.macholib.dyld" [style="dotted"];
 		"ctypes.macholib" -> "ctypes.macholib.framework" [style="dotted"];
 		"ctypes.macholib" -> "ctypes.macholib.dylib" [style="dotted"];
-	}
-	subgraph "cluster_importlib.metadata" {
-		label="importlib.metadata";
-		"importlib.metadata" -> "importlib.metadata._adapters" [style="dotted"];
-		"importlib.metadata" -> "importlib.metadata._meta" [style="dotted"];
-		"importlib.metadata" -> "importlib.metadata._collections" [style="dotted"];
-		"importlib.metadata" -> "importlib.metadata._functools" [style="dotted"];
-		"importlib.metadata" -> "importlib.metadata._itertools" [style="dotted"];
-		"importlib.metadata" -> "importlib.metadata._text" [style="dotted"];
-	}
-	subgraph "cluster_json" {
-		label="json";
-		"json" -> "json.scanner" [style="dotted"];
-		"json" -> "json.decoder" [style="dotted"];
-		"json" -> "json.encoder" [style="dotted"];
-	}
-	subgraph "cluster_win32com.server" {
-		label="win32com.server";
-		"win32com.server" -> "win32com.server.policy" [style="dotted"];
-		"win32com.server" -> "win32com.server.util" [style="dotted"];
-		"win32com.server" -> "win32com.server.exception" [style="dotted"];
-		"win32com.server" -> "win32com.server.dispatcher" [style="dotted"];
-	}
-	subgraph "cluster_http" {
-		label="http";
-		"http" -> "http.client" [style="dotted"];
-		"http" -> "http.cookiejar" [style="dotted"];
-	}
-	subgraph "cluster_urllib" {
-		label="urllib";
-		"urllib" -> "urllib.parse" [style="dotted"];
-		"urllib" -> "urllib.request" [style="dotted"];
-		"urllib" -> "urllib.error" [style="dotted"];
-		"urllib" -> "urllib.response" [style="dotted"];
-	}
-	subgraph "cluster_scapy.layers.msrpce" {
-		label="scapy.layers.msrpce";
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.all" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.ept" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.msdcom" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.msdrsr" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.msnrpc" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.mspac" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.rpcclient" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.rpcserver" [style="dotted"];
-		"scapy.layers.msrpce" -> "scapy.layers.msrpce.raw" [style="dotted"];
-	}
-	subgraph "cluster_scapy.layers.tls.crypto" {
-		label="scapy.layers.tls.crypto";
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.compression" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.hkdf" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.prf" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.suites" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.cipher_aead" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.cipher_stream" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.common" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.pkcs1" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.h_mac" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.groups" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.hash" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.md4" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.kx_algs" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.ciphers" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.cipher_block" [style="dotted"];
-		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.all" [style="dotted"];
-	}
-	subgraph "cluster_importlib.resources" {
-		label="importlib.resources";
-		"importlib.resources" -> "importlib.resources._common" [style="dotted"];
-		"importlib.resources" -> "importlib.resources._legacy" [style="dotted"];
-		"importlib.resources" -> "importlib.resources.abc" [style="dotted"];
-		"importlib.resources" -> "importlib.resources._adapters" [style="dotted"];
-		"importlib.resources" -> "importlib.resources.readers" [style="dotted"];
-		"importlib.resources" -> "importlib.resources._itertools" [style="dotted"];
-	}
-	subgraph "cluster_concurrent" {
-		label="concurrent";
-		"concurrent" -> "concurrent.futures" [style="dotted"];
-	}
-	subgraph "cluster_win32com" {
-		label="win32com";
-		"win32com" -> "win32com.universal" [style="dotted"];
-		"win32com" -> "win32com.client" [style="dotted"];
-		"win32com" -> "win32com.server" [style="dotted"];
-		"win32com" -> "win32com.util" [style="dotted"];
-	}
-	subgraph "cluster_click" {
-		label="click";
-		"click" -> "click.types" [style="dotted"];
-		"click" -> "click.core" [style="dotted"];
-		"click" -> "click.decorators" [style="dotted"];
-		"click" -> "click.exceptions" [style="dotted"];
-		"click" -> "click.formatting" [style="dotted"];
-		"click" -> "click.globals" [style="dotted"];
-		"click" -> "click.termui" [style="dotted"];
-		"click" -> "click.utils" [style="dotted"];
-		"click" -> "click.parser" [style="dotted"];
-		"click" -> "click._compat" [style="dotted"];
-		"click" -> "click._winconsole" [style="dotted"];
-		"click" -> "click.shell_completion" [style="dotted"];
-		"click" -> "click._termui_impl" [style="dotted"];
-		"click" -> "click._textwrap" [style="dotted"];
-	}
-	subgraph "cluster_email" {
-		label="email";
-		"email" -> "email.errors" [style="dotted"];
-		"email" -> "email.charset" [style="dotted"];
-		"email" -> "email.header" [style="dotted"];
-		"email" -> "email._header_value_parser" [style="dotted"];
-		"email" -> "email.parser" [style="dotted"];
-		"email" -> "email.message" [style="dotted"];
-		"email" -> "email.utils" [style="dotted"];
-		"email" -> "email._encoded_words" [style="dotted"];
-		"email" -> "email.quoprimime" [style="dotted"];
-		"email" -> "email.base64mime" [style="dotted"];
-		"email" -> "email.encoders" [style="dotted"];
-		"email" -> "email.feedparser" [style="dotted"];
-		"email" -> "email._policybase" [style="dotted"];
-		"email" -> "email._parseaddr" [style="dotted"];
-		"email" -> "email.generator" [style="dotted"];
-		"email" -> "email.iterators" [style="dotted"];
-		"email" -> "email.policy" [style="dotted"];
-		"email" -> "email.headerregistry" [style="dotted"];
-		"email" -> "email.contentmanager" [style="dotted"];
-	}
-	subgraph "cluster_psutil" {
-		label="psutil";
-		"psutil" -> "psutil._common" [style="dotted"];
-		"psutil" -> "psutil._pswindows" [style="dotted"];
-		"psutil" -> "psutil._psutil_windows" [style="dotted"];
-	}
-	subgraph "cluster_unittest" {
-		label="unittest";
-		"unittest" -> "unittest.util" [style="dotted"];
-		"unittest" -> "unittest.result" [style="dotted"];
-		"unittest" -> "unittest.case" [style="dotted"];
-		"unittest" -> "unittest.suite" [style="dotted"];
-		"unittest" -> "unittest.loader" [style="dotted"];
-		"unittest" -> "unittest.runner" [style="dotted"];
-		"unittest" -> "unittest.main" [style="dotted"];
-		"unittest" -> "unittest.signals" [style="dotted"];
-		"unittest" -> "unittest.async_case" [style="dotted"];
-		"unittest" -> "unittest.mock" [style="dotted"];
-		"unittest" -> "unittest._log" [style="dotted"];
 	}
 	subgraph "cluster_scapy.layers" {
 		label="scapy.layers";
@@ -1061,11 +884,9 @@ charset="UTF-8";
 		"scapy.layers" -> "scapy.layers.vxlan" [style="dotted"];
 		"scapy.layers" -> "scapy.layers.zigbee" [style="dotted"];
 	}
-	subgraph "cluster_scapy.contrib" {
-		label="scapy.contrib";
-		"scapy.contrib" -> "scapy.contrib.http2" [style="dotted"];
-		"scapy.contrib" -> "scapy.contrib.rtps" [style="dotted"];
-		"scapy.contrib" -> "scapy.contrib.ethercat" [style="dotted"];
+	subgraph "cluster_logging" {
+		label="logging";
+		"logging" -> "logging.handlers" [style="dotted"];
 	}
 	subgraph "cluster_win32com.client" {
 		label="win32com.client";
@@ -1078,32 +899,44 @@ charset="UTF-8";
 		"win32com.client" -> "win32com.client.selecttlb" [style="dotted"];
 		"win32com.client" -> "win32com.client.makepy" [style="dotted"];
 	}
-	subgraph "cluster_scapy.asn1" {
-		label="scapy.asn1";
-		"scapy.asn1" -> "scapy.asn1.asn1" [style="dotted"];
-		"scapy.asn1" -> "scapy.asn1.mib" [style="dotted"];
-		"scapy.asn1" -> "scapy.asn1.ber" [style="dotted"];
+	subgraph "cluster_pywin.dialogs" {
+		label="pywin.dialogs";
+		"pywin.dialogs" -> "pywin.dialogs.status" [style="dotted"];
+		"pywin.dialogs" -> "pywin.dialogs.list" [style="dotted"];
 	}
-	subgraph "cluster_logging" {
-		label="logging";
-		"logging" -> "logging.handlers" [style="dotted"];
+	subgraph "cluster_dotenv" {
+		label="dotenv";
+		"dotenv" -> "dotenv.main" [style="dotted"];
+		"dotenv" -> "dotenv.ipython" [style="dotted"];
+		"dotenv" -> "dotenv.parser" [style="dotted"];
+		"dotenv" -> "dotenv.variables" [style="dotted"];
 	}
-	subgraph "cluster_scapy.arch.bpf" {
-		label="scapy.arch.bpf";
-		"scapy.arch.bpf" -> "scapy.arch.bpf.core" [style="dotted"];
-		"scapy.arch.bpf" -> "scapy.arch.bpf.supersocket" [style="dotted"];
-		"scapy.arch.bpf" -> "scapy.arch.bpf.consts" [style="dotted"];
-		"scapy.arch.bpf" -> "scapy.arch.bpf.pfroute" [style="dotted"];
+	subgraph "cluster_xml.sax" {
+		label="xml.sax";
+		"xml.sax" -> "xml.sax.handler" [style="dotted"];
+		"xml.sax" -> "xml.sax.xmlreader" [style="dotted"];
+		"xml.sax" -> "xml.sax.saxutils" [style="dotted"];
+		"xml.sax" -> "xml.sax._exceptions" [style="dotted"];
+		"xml.sax" -> "xml.sax.expatreader" [style="dotted"];
 	}
-	subgraph "cluster_scapy.arch" {
-		label="scapy.arch";
-		"scapy.arch" -> "scapy.arch.linux" [style="dotted"];
-		"scapy.arch" -> "scapy.arch.solaris" [style="dotted"];
-		"scapy.arch" -> "scapy.arch.windows" [style="dotted"];
-		"scapy.arch" -> "scapy.arch.common" [style="dotted"];
-		"scapy.arch" -> "scapy.arch.bpf" [style="dotted"];
-		"scapy.arch" -> "scapy.arch.libpcap" [style="dotted"];
-		"scapy.arch" -> "scapy.arch.unix" [style="dotted"];
+	subgraph "cluster_scapy.layers.tls.crypto" {
+		label="scapy.layers.tls.crypto";
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.compression" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.hkdf" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.prf" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.suites" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.cipher_aead" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.cipher_stream" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.common" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.pkcs1" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.h_mac" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.groups" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.hash" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.md4" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.kx_algs" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.ciphers" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.cipher_block" [style="dotted"];
+		"scapy.layers.tls.crypto" -> "scapy.layers.tls.crypto.all" [style="dotted"];
 	}
 	subgraph "cluster_scapy.libs" {
 		label="scapy.libs";
@@ -1115,6 +948,14 @@ charset="UTF-8";
 		"scapy.libs" -> "scapy.libs.extcap" [style="dotted"];
 		"scapy.libs" -> "scapy.libs.test_pyx" [style="dotted"];
 		"scapy.libs" -> "scapy.libs.rfc3961" [style="dotted"];
+	}
+	subgraph "cluster_multiprocessing.dummy" {
+		label="multiprocessing.dummy";
+		"multiprocessing.dummy" -> "multiprocessing.dummy.connection" [style="dotted"];
+	}
+	subgraph "cluster_html" {
+		label="html";
+		"html" -> "html.entities" [style="dotted"];
 	}
 	subgraph "cluster_importlib" {
 		label="importlib";
@@ -1135,10 +976,63 @@ charset="UTF-8";
 		"pywin.mfc" -> "pywin.mfc.dialog" [style="dotted"];
 		"pywin.mfc" -> "pywin.mfc.thread" [style="dotted"];
 	}
-	subgraph "cluster_scapy.arch.windows" {
-		label="scapy.arch.windows";
-		"scapy.arch.windows" -> "scapy.arch.windows.structures" [style="dotted"];
-		"scapy.arch.windows" -> "scapy.arch.windows.native" [style="dotted"];
+	subgraph "cluster_re" {
+		label="re";
+		"re" -> "re._parser" [style="dotted"];
+		"re" -> "re._compiler" [style="dotted"];
+		"re" -> "re._constants" [style="dotted"];
+		"re" -> "re._casefix" [style="dotted"];
+	}
+	subgraph "cluster_xml.parsers" {
+		label="xml.parsers";
+		"xml.parsers" -> "xml.parsers.expat" [style="dotted"];
+	}
+	subgraph "cluster_win32com" {
+		label="win32com";
+		"win32com" -> "win32com.universal" [style="dotted"];
+		"win32com" -> "win32com.client" [style="dotted"];
+		"win32com" -> "win32com.server" [style="dotted"];
+		"win32com" -> "win32com.util" [style="dotted"];
+	}
+	subgraph "cluster_pywin32_system32" {
+		label="pywin32_system32";
+	}
+	subgraph "cluster_scapy.modules" {
+		label="scapy.modules";
+		"scapy.modules" -> "scapy.modules.nmap" [style="dotted"];
+	}
+	subgraph "cluster_tabulate" {
+		label="tabulate";
+		"tabulate" -> "tabulate.version" [style="dotted"];
+	}
+	subgraph "cluster_importlib.metadata" {
+		label="importlib.metadata";
+		"importlib.metadata" -> "importlib.metadata._adapters" [style="dotted"];
+		"importlib.metadata" -> "importlib.metadata._meta" [style="dotted"];
+		"importlib.metadata" -> "importlib.metadata._collections" [style="dotted"];
+		"importlib.metadata" -> "importlib.metadata._functools" [style="dotted"];
+		"importlib.metadata" -> "importlib.metadata._itertools" [style="dotted"];
+		"importlib.metadata" -> "importlib.metadata._text" [style="dotted"];
+	}
+	subgraph "cluster_importlib.resources" {
+		label="importlib.resources";
+		"importlib.resources" -> "importlib.resources._common" [style="dotted"];
+		"importlib.resources" -> "importlib.resources._legacy" [style="dotted"];
+		"importlib.resources" -> "importlib.resources.abc" [style="dotted"];
+		"importlib.resources" -> "importlib.resources._adapters" [style="dotted"];
+		"importlib.resources" -> "importlib.resources.readers" [style="dotted"];
+		"importlib.resources" -> "importlib.resources._itertools" [style="dotted"];
+	}
+	subgraph "cluster_win32com.server" {
+		label="win32com.server";
+		"win32com.server" -> "win32com.server.policy" [style="dotted"];
+		"win32com.server" -> "win32com.server.util" [style="dotted"];
+		"win32com.server" -> "win32com.server.exception" [style="dotted"];
+		"win32com.server" -> "win32com.server.dispatcher" [style="dotted"];
+	}
+	subgraph "cluster_scapy.arch.linux" {
+		label="scapy.arch.linux";
+		"scapy.arch.linux" -> "scapy.arch.linux.rtnetlink" [style="dotted"];
 	}
 	subgraph "cluster_scapy.layers.tls" {
 		label="scapy.layers.tls";
@@ -1160,133 +1054,143 @@ charset="UTF-8";
 		"scapy.layers.tls" -> "scapy.layers.tls.automaton_srv" [style="dotted"];
 		"scapy.layers.tls" -> "scapy.layers.tls.tools" [style="dotted"];
 	}
-	subgraph "cluster_scapy.arch.linux" {
-		label="scapy.arch.linux";
-		"scapy.arch.linux" -> "scapy.arch.linux.rtnetlink" [style="dotted"];
+	subgraph "cluster_concurrent.futures" {
+		label="concurrent.futures";
+		"concurrent.futures" -> "concurrent.futures._base" [style="dotted"];
+		"concurrent.futures" -> "concurrent.futures.process" [style="dotted"];
+		"concurrent.futures" -> "concurrent.futures.thread" [style="dotted"];
 	}
-	subgraph "cluster_pywin.dialogs" {
-		label="pywin.dialogs";
-		"pywin.dialogs" -> "pywin.dialogs.status" [style="dotted"];
-		"pywin.dialogs" -> "pywin.dialogs.list" [style="dotted"];
-	}
-	subgraph "cluster_scapy.modules" {
-		label="scapy.modules";
-		"scapy.modules" -> "scapy.modules.nmap" [style="dotted"];
-	}
-	subgraph "cluster_ctypes" {
-		label="ctypes";
-		"ctypes" -> "ctypes._endian" [style="dotted"];
-		"ctypes" -> "ctypes.wintypes" [style="dotted"];
-		"ctypes" -> "ctypes.util" [style="dotted"];
-		"ctypes" -> "ctypes._aix" [style="dotted"];
-		"ctypes" -> "ctypes.macholib" [style="dotted"];
-	}
-	subgraph "cluster_collections" {
-		label="collections";
-		"collections" -> "collections.Iterable" [style="dotted"];
-		"collections" -> "collections.abc" [style="dotted"];
-	}
-	subgraph "cluster_tabulate" {
-		label="tabulate";
-		"tabulate" -> "tabulate.version" [style="dotted"];
-	}
-	subgraph "cluster_multiprocessing" {
-		label="multiprocessing";
-		"multiprocessing" -> "multiprocessing.process" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.util" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.AuthenticationError" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.BufferTooShort" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.resource_sharer" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.connection" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.get_start_method" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.set_start_method" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.resource_tracker" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.spawn" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.forkserver" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.reduction" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.get_context" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.TimeoutError" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.pool" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.shared_memory" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.context" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.managers" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.synchronize" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.queues" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.sharedctypes" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.popen_fork" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.popen_spawn_posix" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.popen_forkserver" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.popen_spawn_win32" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.heap" [style="dotted"];
-		"multiprocessing" -> "multiprocessing.dummy" [style="dotted"];
+	subgraph "cluster_xmlrpc" {
+		label="xmlrpc";
+		"xmlrpc" -> "xmlrpc.client" [style="dotted"];
 	}
 	subgraph "cluster_xml" {
 		label="xml";
 		"xml" -> "xml.parsers" [style="dotted"];
 		"xml" -> "xml.sax" [style="dotted"];
 	}
-	subgraph "cluster_colorama" {
-		label="colorama";
-		"colorama" -> "colorama.win32" [style="dotted"];
-		"colorama" -> "colorama.initialise" [style="dotted"];
-		"colorama" -> "colorama.ansi" [style="dotted"];
-		"colorama" -> "colorama.ansitowin32" [style="dotted"];
-		"colorama" -> "colorama.winterm" [style="dotted"];
+	subgraph "cluster_unittest" {
+		label="unittest";
+		"unittest" -> "unittest.util" [style="dotted"];
+		"unittest" -> "unittest.result" [style="dotted"];
+		"unittest" -> "unittest.case" [style="dotted"];
+		"unittest" -> "unittest.suite" [style="dotted"];
+		"unittest" -> "unittest.loader" [style="dotted"];
+		"unittest" -> "unittest.runner" [style="dotted"];
+		"unittest" -> "unittest.main" [style="dotted"];
+		"unittest" -> "unittest.signals" [style="dotted"];
+		"unittest" -> "unittest.async_case" [style="dotted"];
+		"unittest" -> "unittest.mock" [style="dotted"];
+		"unittest" -> "unittest._log" [style="dotted"];
 	}
-	subgraph "cluster_dotenv" {
-		label="dotenv";
-		"dotenv" -> "dotenv.main" [style="dotted"];
-		"dotenv" -> "dotenv.ipython" [style="dotted"];
-		"dotenv" -> "dotenv.parser" [style="dotted"];
-		"dotenv" -> "dotenv.variables" [style="dotted"];
+	subgraph "cluster_scapy.arch.bpf" {
+		label="scapy.arch.bpf";
+		"scapy.arch.bpf" -> "scapy.arch.bpf.core" [style="dotted"];
+		"scapy.arch.bpf" -> "scapy.arch.bpf.supersocket" [style="dotted"];
+		"scapy.arch.bpf" -> "scapy.arch.bpf.consts" [style="dotted"];
+		"scapy.arch.bpf" -> "scapy.arch.bpf.pfroute" [style="dotted"];
 	}
-	subgraph "cluster_xml.parsers" {
-		label="xml.parsers";
-		"xml.parsers" -> "xml.parsers.expat" [style="dotted"];
+	subgraph "cluster_click" {
+		label="click";
+		"click" -> "click.types" [style="dotted"];
+		"click" -> "click.core" [style="dotted"];
+		"click" -> "click.decorators" [style="dotted"];
+		"click" -> "click.exceptions" [style="dotted"];
+		"click" -> "click.formatting" [style="dotted"];
+		"click" -> "click.globals" [style="dotted"];
+		"click" -> "click.termui" [style="dotted"];
+		"click" -> "click.utils" [style="dotted"];
+		"click" -> "click.parser" [style="dotted"];
+		"click" -> "click._compat" [style="dotted"];
+		"click" -> "click._winconsole" [style="dotted"];
+		"click" -> "click.shell_completion" [style="dotted"];
+		"click" -> "click._termui_impl" [style="dotted"];
+		"click" -> "click._textwrap" [style="dotted"];
 	}
-	subgraph "cluster_html" {
-		label="html";
-		"html" -> "html.entities" [style="dotted"];
+	subgraph "cluster_scapy.layers.msrpce" {
+		label="scapy.layers.msrpce";
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.all" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.ept" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.msdcom" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.msdrsr" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.msnrpc" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.mspac" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.rpcclient" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.rpcserver" [style="dotted"];
+		"scapy.layers.msrpce" -> "scapy.layers.msrpce.raw" [style="dotted"];
 	}
-	subgraph "cluster_scapy" {
-		label="scapy";
-		"scapy" -> "scapy.main" [style="dotted"];
-		"scapy" -> "scapy.all" [style="dotted"];
-		"scapy" -> "scapy.sendrecv" [style="dotted"];
-		"scapy" -> "scapy.packet" [style="dotted"];
-		"scapy" -> "scapy.fields" [style="dotted"];
-		"scapy" -> "scapy.config" [style="dotted"];
-		"scapy" -> "scapy.base_classes" [style="dotted"];
-		"scapy" -> "scapy.volatile" [style="dotted"];
-		"scapy" -> "scapy.error" [style="dotted"];
-		"scapy" -> "scapy.themes" [style="dotted"];
-		"scapy" -> "scapy.consts" [style="dotted"];
-		"scapy" -> "scapy.compat" [style="dotted"];
-		"scapy" -> "scapy.utils" [style="dotted"];
-		"scapy" -> "scapy.data" [style="dotted"];
-		"scapy" -> "scapy.pton_ntop" [style="dotted"];
-		"scapy" -> "scapy.plist" [style="dotted"];
-		"scapy" -> "scapy.supersocket" [style="dotted"];
-		"scapy" -> "scapy.interfaces" [style="dotted"];
-		"scapy" -> "scapy.libs" [style="dotted"];
-		"scapy" -> "scapy.utils6" [style="dotted"];
-		"scapy" -> "scapy.sessions" [style="dotted"];
-		"scapy" -> "scapy.asn1packet" [style="dotted"];
-		"scapy" -> "scapy.asn1fields" [style="dotted"];
-		"scapy" -> "scapy.asn1" [style="dotted"];
-		"scapy" -> "scapy.dadict" [style="dotted"];
-		"scapy" -> "scapy.automaton" [style="dotted"];
-		"scapy" -> "scapy.arch" [style="dotted"];
-		"scapy" -> "scapy.as_resolvers" [style="dotted"];
-		"scapy" -> "scapy.route6" [style="dotted"];
-		"scapy" -> "scapy.layers" [style="dotted"];
-		"scapy" -> "scapy.modules" [style="dotted"];
-		"scapy" -> "scapy.route" [style="dotted"];
-		"scapy" -> "scapy.ansmachine" [style="dotted"];
-		"scapy" -> "scapy.autorun" [style="dotted"];
-		"scapy" -> "scapy.pipetool" [style="dotted"];
-		"scapy" -> "scapy.scapypipes" [style="dotted"];
-		"scapy" -> "scapy.contrib" [style="dotted"];
+	subgraph "cluster_json" {
+		label="json";
+		"json" -> "json.scanner" [style="dotted"];
+		"json" -> "json.decoder" [style="dotted"];
+		"json" -> "json.encoder" [style="dotted"];
+	}
+	subgraph "cluster_email" {
+		label="email";
+		"email" -> "email.errors" [style="dotted"];
+		"email" -> "email.charset" [style="dotted"];
+		"email" -> "email.header" [style="dotted"];
+		"email" -> "email._header_value_parser" [style="dotted"];
+		"email" -> "email.parser" [style="dotted"];
+		"email" -> "email.message" [style="dotted"];
+		"email" -> "email.utils" [style="dotted"];
+		"email" -> "email._encoded_words" [style="dotted"];
+		"email" -> "email.quoprimime" [style="dotted"];
+		"email" -> "email.base64mime" [style="dotted"];
+		"email" -> "email.encoders" [style="dotted"];
+		"email" -> "email.feedparser" [style="dotted"];
+		"email" -> "email._policybase" [style="dotted"];
+		"email" -> "email._parseaddr" [style="dotted"];
+		"email" -> "email.generator" [style="dotted"];
+		"email" -> "email.iterators" [style="dotted"];
+		"email" -> "email.policy" [style="dotted"];
+		"email" -> "email.headerregistry" [style="dotted"];
+		"email" -> "email.contentmanager" [style="dotted"];
+	}
+	subgraph "cluster_psutil" {
+		label="psutil";
+		"psutil" -> "psutil._common" [style="dotted"];
+		"psutil" -> "psutil._pswindows" [style="dotted"];
+		"psutil" -> "psutil._psutil_windows" [style="dotted"];
+	}
+	subgraph "cluster_asyncio" {
+		label="asyncio";
+		"asyncio" -> "asyncio.constants" [style="dotted"];
+		"asyncio" -> "asyncio.coroutines" [style="dotted"];
+		"asyncio" -> "asyncio.format_helpers" [style="dotted"];
+		"asyncio" -> "asyncio.DefaultEventLoopPolicy" [style="dotted"];
+		"asyncio" -> "asyncio.events" [style="dotted"];
+		"asyncio" -> "asyncio.exceptions" [style="dotted"];
+		"asyncio" -> "asyncio.base_futures" [style="dotted"];
+		"asyncio" -> "asyncio.futures" [style="dotted"];
+		"asyncio" -> "asyncio.protocols" [style="dotted"];
+		"asyncio" -> "asyncio.transports" [style="dotted"];
+		"asyncio" -> "asyncio.sslproto" [style="dotted"];
+		"asyncio" -> "asyncio.mixins" [style="dotted"];
+		"asyncio" -> "asyncio.base_tasks" [style="dotted"];
+		"asyncio" -> "asyncio.locks" [style="dotted"];
+		"asyncio" -> "asyncio.tasks" [style="dotted"];
+		"asyncio" -> "asyncio.staggered" [style="dotted"];
+		"asyncio" -> "asyncio.trsock" [style="dotted"];
+		"asyncio" -> "asyncio.base_events" [style="dotted"];
+		"asyncio" -> "asyncio.runners" [style="dotted"];
+		"asyncio" -> "asyncio.queues" [style="dotted"];
+		"asyncio" -> "asyncio.streams" [style="dotted"];
+		"asyncio" -> "asyncio.subprocess" [style="dotted"];
+		"asyncio" -> "asyncio.taskgroups" [style="dotted"];
+		"asyncio" -> "asyncio.timeouts" [style="dotted"];
+		"asyncio" -> "asyncio.threads" [style="dotted"];
+		"asyncio" -> "asyncio.base_subprocess" [style="dotted"];
+		"asyncio" -> "asyncio.proactor_events" [style="dotted"];
+		"asyncio" -> "asyncio.selector_events" [style="dotted"];
+		"asyncio" -> "asyncio.windows_utils" [style="dotted"];
+		"asyncio" -> "asyncio.windows_events" [style="dotted"];
+		"asyncio" -> "asyncio.unix_events" [style="dotted"];
+		"asyncio" -> "asyncio.log" [style="dotted"];
+	}
+	subgraph "cluster_concurrent" {
+		label="concurrent";
+		"concurrent" -> "concurrent.futures" [style="dotted"];
 	}
 	subgraph "cluster_encodings" {
 		label="encodings";
@@ -1412,44 +1316,145 @@ charset="UTF-8";
 		"encodings" -> "encodings.uu_codec" [style="dotted"];
 		"encodings" -> "encodings.zlib_codec" [style="dotted"];
 	}
-	subgraph "cluster_xml.sax" {
-		label="xml.sax";
-		"xml.sax" -> "xml.sax.handler" [style="dotted"];
-		"xml.sax" -> "xml.sax.xmlreader" [style="dotted"];
-		"xml.sax" -> "xml.sax.saxutils" [style="dotted"];
-		"xml.sax" -> "xml.sax._exceptions" [style="dotted"];
-		"xml.sax" -> "xml.sax.expatreader" [style="dotted"];
+	subgraph "cluster_scapy" {
+		label="scapy";
+		"scapy" -> "scapy.main" [style="dotted"];
+		"scapy" -> "scapy.all" [style="dotted"];
+		"scapy" -> "scapy.sendrecv" [style="dotted"];
+		"scapy" -> "scapy.packet" [style="dotted"];
+		"scapy" -> "scapy.fields" [style="dotted"];
+		"scapy" -> "scapy.config" [style="dotted"];
+		"scapy" -> "scapy.base_classes" [style="dotted"];
+		"scapy" -> "scapy.volatile" [style="dotted"];
+		"scapy" -> "scapy.error" [style="dotted"];
+		"scapy" -> "scapy.themes" [style="dotted"];
+		"scapy" -> "scapy.consts" [style="dotted"];
+		"scapy" -> "scapy.compat" [style="dotted"];
+		"scapy" -> "scapy.utils" [style="dotted"];
+		"scapy" -> "scapy.data" [style="dotted"];
+		"scapy" -> "scapy.pton_ntop" [style="dotted"];
+		"scapy" -> "scapy.plist" [style="dotted"];
+		"scapy" -> "scapy.supersocket" [style="dotted"];
+		"scapy" -> "scapy.interfaces" [style="dotted"];
+		"scapy" -> "scapy.libs" [style="dotted"];
+		"scapy" -> "scapy.utils6" [style="dotted"];
+		"scapy" -> "scapy.sessions" [style="dotted"];
+		"scapy" -> "scapy.asn1packet" [style="dotted"];
+		"scapy" -> "scapy.asn1fields" [style="dotted"];
+		"scapy" -> "scapy.asn1" [style="dotted"];
+		"scapy" -> "scapy.dadict" [style="dotted"];
+		"scapy" -> "scapy.automaton" [style="dotted"];
+		"scapy" -> "scapy.arch" [style="dotted"];
+		"scapy" -> "scapy.as_resolvers" [style="dotted"];
+		"scapy" -> "scapy.route6" [style="dotted"];
+		"scapy" -> "scapy.layers" [style="dotted"];
+		"scapy" -> "scapy.modules" [style="dotted"];
+		"scapy" -> "scapy.route" [style="dotted"];
+		"scapy" -> "scapy.ansmachine" [style="dotted"];
+		"scapy" -> "scapy.autorun" [style="dotted"];
+		"scapy" -> "scapy.pipetool" [style="dotted"];
+		"scapy" -> "scapy.scapypipes" [style="dotted"];
+		"scapy" -> "scapy.contrib" [style="dotted"];
 	}
-	subgraph "cluster_re" {
-		label="re";
-		"re" -> "re._parser" [style="dotted"];
-		"re" -> "re._compiler" [style="dotted"];
-		"re" -> "re._constants" [style="dotted"];
-		"re" -> "re._casefix" [style="dotted"];
+	subgraph "cluster_scapy.contrib.rtps" {
+		label="scapy.contrib.rtps";
+		"scapy.contrib.rtps" -> "scapy.contrib.rtps.rtps" [style="dotted"];
+		"scapy.contrib.rtps" -> "scapy.contrib.rtps.pid_types" [style="dotted"];
+		"scapy.contrib.rtps" -> "scapy.contrib.rtps.common_types" [style="dotted"];
 	}
-	subgraph "cluster_concurrent.futures" {
-		label="concurrent.futures";
-		"concurrent.futures" -> "concurrent.futures._base" [style="dotted"];
-		"concurrent.futures" -> "concurrent.futures.process" [style="dotted"];
-		"concurrent.futures" -> "concurrent.futures.thread" [style="dotted"];
+	subgraph "cluster_winlldp" {
+		label="winlldp";
+		"winlldp" -> "winlldp.cli" [style="dotted"];
+		"winlldp" -> "winlldp.config" [style="dotted"];
+		"winlldp" -> "winlldp.lldp_sender" [style="dotted"];
+		"winlldp" -> "winlldp.lldp_receiver" [style="dotted"];
+		"winlldp" -> "winlldp.system_info" [style="dotted"];
+		"winlldp" -> "winlldp.file_debug" [style="dotted"];
+		"winlldp" -> "winlldp.capture_subprocess" [style="dotted"];
+		"winlldp" -> "winlldp.lldp_packet" [style="dotted"];
+		"winlldp" -> "winlldp.logger" [style="dotted"];
 	}
-	subgraph "cluster_multiprocessing.dummy" {
-		label="multiprocessing.dummy";
-		"multiprocessing.dummy" -> "multiprocessing.dummy.connection" [style="dotted"];
+	subgraph "cluster_http" {
+		label="http";
+		"http" -> "http.client" [style="dotted"];
+		"http" -> "http.cookiejar" [style="dotted"];
 	}
-	subgraph "cluster_xmlrpc" {
-		label="xmlrpc";
-		"xmlrpc" -> "xmlrpc.client" [style="dotted"];
+	subgraph "cluster_scapy.arch" {
+		label="scapy.arch";
+		"scapy.arch" -> "scapy.arch.linux" [style="dotted"];
+		"scapy.arch" -> "scapy.arch.solaris" [style="dotted"];
+		"scapy.arch" -> "scapy.arch.windows" [style="dotted"];
+		"scapy.arch" -> "scapy.arch.common" [style="dotted"];
+		"scapy.arch" -> "scapy.arch.bpf" [style="dotted"];
+		"scapy.arch" -> "scapy.arch.libpcap" [style="dotted"];
+		"scapy.arch" -> "scapy.arch.unix" [style="dotted"];
 	}
-	subgraph "cluster_scapy.layers.msrpce.raw" {
-		label="scapy.layers.msrpce.raw";
-		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ept" [style="dotted"];
-		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_dcom" [style="dotted"];
-		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_drsr" [style="dotted"];
-		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_nrpc" [style="dotted"];
-		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_samr" [style="dotted"];
-		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_srvs" [style="dotted"];
-		"scapy.layers.msrpce.raw" -> "scapy.layers.msrpce.raw.ms_wkst" [style="dotted"];
+	subgraph "cluster_colorama" {
+		label="colorama";
+		"colorama" -> "colorama.win32" [style="dotted"];
+		"colorama" -> "colorama.initialise" [style="dotted"];
+		"colorama" -> "colorama.ansi" [style="dotted"];
+		"colorama" -> "colorama.ansitowin32" [style="dotted"];
+		"colorama" -> "colorama.winterm" [style="dotted"];
+	}
+	subgraph "cluster_scapy.contrib" {
+		label="scapy.contrib";
+		"scapy.contrib" -> "scapy.contrib.http2" [style="dotted"];
+		"scapy.contrib" -> "scapy.contrib.rtps" [style="dotted"];
+		"scapy.contrib" -> "scapy.contrib.ethercat" [style="dotted"];
+	}
+	subgraph "cluster_scapy.arch.windows" {
+		label="scapy.arch.windows";
+		"scapy.arch.windows" -> "scapy.arch.windows.structures" [style="dotted"];
+		"scapy.arch.windows" -> "scapy.arch.windows.native" [style="dotted"];
+	}
+	subgraph "cluster_scapy.asn1" {
+		label="scapy.asn1";
+		"scapy.asn1" -> "scapy.asn1.asn1" [style="dotted"];
+		"scapy.asn1" -> "scapy.asn1.mib" [style="dotted"];
+		"scapy.asn1" -> "scapy.asn1.ber" [style="dotted"];
+	}
+	subgraph "cluster_pywin" {
+		label="pywin";
+		"pywin" -> "pywin.mfc" [style="dotted"];
+		"pywin" -> "pywin.dialogs" [style="dotted"];
+	}
+	subgraph "cluster_multiprocessing" {
+		label="multiprocessing";
+		"multiprocessing" -> "multiprocessing.process" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.util" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.AuthenticationError" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.BufferTooShort" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.resource_sharer" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.connection" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.get_start_method" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.set_start_method" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.resource_tracker" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.spawn" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.forkserver" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.reduction" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.get_context" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.TimeoutError" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.pool" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.shared_memory" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.context" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.managers" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.synchronize" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.queues" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.sharedctypes" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.popen_fork" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.popen_spawn_posix" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.popen_forkserver" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.popen_spawn_win32" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.heap" [style="dotted"];
+		"multiprocessing" -> "multiprocessing.dummy" [style="dotted"];
+	}
+	subgraph "cluster_urllib" {
+		label="urllib";
+		"urllib" -> "urllib.parse" [style="dotted"];
+		"urllib" -> "urllib.request" [style="dotted"];
+		"urllib" -> "urllib.error" [style="dotted"];
+		"urllib" -> "urllib.response" [style="dotted"];
 	}
 	"<PyiModuleGraph>" -> "gc" [];
 	"<PyiModuleGraph>" -> "time" [];
@@ -1461,33 +1466,33 @@ charset="UTF-8";
 	"<PyiModuleGraph>" -> "_datetime" [];
 	"<PyiModuleGraph>" -> "datetime" [];
 	"<PyiModuleGraph>" -> "_posixsubprocess" [];
-	"<PyiModuleGraph>" -> "sre_constants" [];
-	"<PyiModuleGraph>" -> "reprlib" [];
-	"<PyiModuleGraph>" -> "linecache" [];
-	"<PyiModuleGraph>" -> "warnings" [];
-	"<PyiModuleGraph>" -> "io" [];
-	"<PyiModuleGraph>" -> "collections" [];
-	"<PyiModuleGraph>" -> "heapq" [];
-	"<PyiModuleGraph>" -> "_collections_abc" [];
-	"<PyiModuleGraph>" -> "keyword" [];
-	"<PyiModuleGraph>" -> "sre_compile" [];
+	"<PyiModuleGraph>" -> "enum" [];
 	"<PyiModuleGraph>" -> "weakref" [];
-	"<PyiModuleGraph>" -> "genericpath" [];
-	"<PyiModuleGraph>" -> "operator" [];
-	"<PyiModuleGraph>" -> "copyreg" [];
-	"<PyiModuleGraph>" -> "types" [];
+	"<PyiModuleGraph>" -> "collections" [];
+	"<PyiModuleGraph>" -> "_collections_abc" [];
 	"<PyiModuleGraph>" -> "abc" [];
-	"<PyiModuleGraph>" -> "_weakrefset" [];
-	"<PyiModuleGraph>" -> "sre_parse" [];
-	"<PyiModuleGraph>" -> "os" [];
-	"<PyiModuleGraph>" -> "functools" [];
-	"<PyiModuleGraph>" -> "encodings" [];
-	"<PyiModuleGraph>" -> "locale" [];
 	"<PyiModuleGraph>" -> "traceback" [];
+	"<PyiModuleGraph>" -> "warnings" [];
+	"<PyiModuleGraph>" -> "encodings" [];
+	"<PyiModuleGraph>" -> "sre_compile" [];
+	"<PyiModuleGraph>" -> "functools" [];
+	"<PyiModuleGraph>" -> "keyword" [];
+	"<PyiModuleGraph>" -> "_weakrefset" [];
 	"<PyiModuleGraph>" -> "re" [];
+	"<PyiModuleGraph>" -> "io" [];
+	"<PyiModuleGraph>" -> "types" [];
+	"<PyiModuleGraph>" -> "heapq" [];
+	"<PyiModuleGraph>" -> "sre_parse" [];
+	"<PyiModuleGraph>" -> "sre_constants" [];
+	"<PyiModuleGraph>" -> "copyreg" [];
+	"<PyiModuleGraph>" -> "locale" [];
+	"<PyiModuleGraph>" -> "linecache" [];
+	"<PyiModuleGraph>" -> "genericpath" [];
+	"<PyiModuleGraph>" -> "os" [];
+	"<PyiModuleGraph>" -> "operator" [];
 	"<PyiModuleGraph>" -> "stat" [];
 	"<PyiModuleGraph>" -> "posixpath" [];
-	"<PyiModuleGraph>" -> "enum" [];
+	"<PyiModuleGraph>" -> "reprlib" [];
 	"<PyiModuleGraph>" -> "D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" [];
 	"<PyiModuleGraph>" -> "_json" [];
 	"<PyiModuleGraph>" -> "_ssl" [];
@@ -2080,39 +2085,40 @@ charset="UTF-8";
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "win32serviceutil" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "servicemanager" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "pywintypes" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "sre_constants" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "reprlib" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "linecache" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "warnings" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "io" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "collections" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "heapq" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "_collections_abc" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "keyword" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "sre_compile" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "enum" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "weakref" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "genericpath" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "codecs" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "operator" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "copyreg" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "types" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "ntpath" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "collections" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "_collections_abc" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "abc" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "_weakrefset" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "sre_parse" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "functools" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "encodings" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "locale" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "traceback" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "ntpath" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "codecs" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "warnings" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "encodings" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "sre_compile" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "functools" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "keyword" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "_weakrefset" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "re" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "io" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "types" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "heapq" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "sre_parse" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "sre_constants" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "copyreg" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "locale" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "linecache" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "genericpath" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "operator" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "stat" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "posixpath" [];
-	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "enum" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "reprlib" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "ipaddress" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "queue" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "win32evtlog" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "win32evtlogutil" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "pickle" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "D:\OneDrive\Documentos\workspace\winlldp\pyi_rth_suppress_warnings.py" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_inspect.py" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\winlldp_main.py" -> "D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\_pyinstaller_hooks_contrib\rthooks\pyi_rth_pythoncom.py" [];
@@ -2282,6 +2288,9 @@ charset="UTF-8";
 	"D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_inspect.py" -> "os" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_inspect.py" -> "sys" [];
 	"D:\OneDrive\Documentos\workspace\winlldp\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_inspect.py" -> "zipfile" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\pyi_rth_suppress_warnings.py" -> "warnings" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\pyi_rth_suppress_warnings.py" -> "sys" [];
+	"D:\OneDrive\Documentos\workspace\winlldp\pyi_rth_suppress_warnings.py" -> "os" [];
 	"multiprocessing.connection" -> "errno" [];
 	"multiprocessing.connection" -> "io" [];
 	"multiprocessing.connection" -> "os" [];
@@ -2978,8 +2987,29 @@ charset="UTF-8";
 	"winlldp.cli" -> "subprocess" [];
 	"winlldp.cli" -> "sys" [];
 	"winlldp.cli" -> "tabulate" [];
+	"winlldp.cli" -> "logging" [];
 	"winlldp.cli" -> "json" [];
 	"winlldp.cli" -> "datetime" [];
+	"winlldp.capture_subprocess" -> "sys" [];
+	"winlldp.capture_subprocess" -> "json" [];
+	"winlldp.capture_subprocess" -> "os" [];
+	"winlldp.capture_subprocess" -> "traceback" [];
+	"winlldp.capture_subprocess" -> "datetime" [];
+	"winlldp.lldp_packet" -> "struct" [];
+	"winlldp.lldp_packet" -> "typing" [];
+	"winlldp.lldp_packet" -> "enum" [];
+	"winlldp.file_debug" -> "os" [];
+	"winlldp.file_debug" -> "sys" [];
+	"winlldp.file_debug" -> "inspect" [];
+	"winlldp.file_debug" -> "functools" [];
+	"winlldp.file_debug" -> "contextlib" [];
+	"winlldp.file_debug" -> "logging" [];
+	"winlldp.logger" -> "logging" [];
+	"winlldp.logger" -> "os" [];
+	"winlldp.logger" -> "sys" [];
+	"winlldp.logger" -> "datetime" [];
+	"winlldp.logger" -> "servicemanager" [];
+	"winlldp.logger" -> "tempfile" [];
 	"winlldp.system_info" -> "socket" [];
 	"winlldp.system_info" -> "platform" [];
 	"winlldp.system_info" -> "psutil" [];
@@ -3102,15 +3132,6 @@ charset="UTF-8";
 	"winlldp.lldp_receiver" -> "typing" [];
 	"winlldp.lldp_receiver" -> "datetime" [];
 	"winlldp.lldp_receiver" -> "psutil" [];
-	"winlldp.logger" -> "logging" [];
-	"winlldp.logger" -> "os" [];
-	"winlldp.logger" -> "sys" [];
-	"winlldp.logger" -> "datetime" [];
-	"winlldp.logger" -> "servicemanager" [];
-	"winlldp.logger" -> "tempfile" [];
-	"winlldp.lldp_packet" -> "struct" [];
-	"winlldp.lldp_packet" -> "typing" [];
-	"winlldp.lldp_packet" -> "enum" [];
 	"winlldp.lldp_sender" -> "time" [];
 	"winlldp.lldp_sender" -> "threading" [];
 	"winlldp.lldp_sender" -> "socket" [];
@@ -3119,6 +3140,8 @@ charset="UTF-8";
 	"winlldp.lldp_sender" -> "typing" [];
 	"winlldp.lldp_sender" -> "subprocess" [];
 	"winlldp.config" -> "os" [];
+	"winlldp.config" -> "sys" [];
+	"winlldp.config" -> "tempfile" [];
 	"winlldp.config" -> "typing" [];
 	"winlldp.config" -> "dotenv" [];
 	"pywintypes" -> "os" [];
@@ -3688,12 +3711,9 @@ charset="UTF-8";
 	"subprocess" -> "pwd" [];
 	"signal" -> "_signal" [];
 	"signal" -> "enum" [];
-	"enum" -> "sys" [];
-	"enum" -> "builtins" [];
-	"enum" -> "types" [];
-	"enum" -> "operator" [];
-	"enum" -> "functools" [];
-	"enum" -> "warnings" [];
+	"reprlib" -> "builtins" [];
+	"reprlib" -> "itertools" [];
+	"reprlib" -> "_thread" [];
 	"posixpath" -> "os" [];
 	"posixpath" -> "sys" [];
 	"posixpath" -> "stat" [];
@@ -3702,22 +3722,27 @@ charset="UTF-8";
 	"posixpath" -> "re" [];
 	"posixpath" -> "posix" [];
 	"stat" -> "_stat" [];
-	"re._parser" -> "warnings" [];
-	"re._parser" -> "unicodedata" [];
-	"re._constants" -> "_sre" [];
-	"re._compiler" -> "_sre" [];
-	"re._compiler" -> "sys" [];
-	"re" -> "enum" [];
-	"re" -> "functools" [];
-	"re" -> "warnings" [];
-	"re" -> "copyreg" [];
-	"traceback" -> "itertools" [];
-	"traceback" -> "linecache" [];
-	"traceback" -> "sys" [];
-	"traceback" -> "textwrap" [];
-	"traceback" -> "contextlib" [];
-	"traceback" -> "ast" [];
-	"traceback" -> "unicodedata" [];
+	"operator" -> "builtins" [];
+	"operator" -> "functools" [];
+	"operator" -> "_operator" [];
+	"os" -> "abc" [];
+	"os" -> "sys" [];
+	"os" -> "stat" [];
+	"os" -> "_collections_abc" [];
+	"os" -> "posix" [];
+	"os" -> "posixpath" [];
+	"os" -> "nt" [];
+	"os" -> "ntpath" [];
+	"os" -> "os.path" [];
+	"os" -> "warnings" [];
+	"os" -> "subprocess" [];
+	"os" -> "io" [];
+	"genericpath" -> "os" [];
+	"genericpath" -> "stat" [];
+	"linecache" -> "functools" [];
+	"linecache" -> "sys" [];
+	"linecache" -> "os" [];
+	"linecache" -> "tokenize" [];
 	"locale" -> "sys" [];
 	"locale" -> "encodings" [];
 	"locale" -> "re" [];
@@ -3727,6 +3752,40 @@ charset="UTF-8";
 	"locale" -> "_locale" [];
 	"locale" -> "warnings" [];
 	"locale" -> "os" [];
+	"copyreg" -> "functools" [];
+	"copyreg" -> "operator" [];
+	"sre_constants" -> "warnings" [];
+	"sre_constants" -> "re" [];
+	"sre_parse" -> "warnings" [];
+	"sre_parse" -> "re" [];
+	"heapq" -> "_heapq" [];
+	"types" -> "sys" [];
+	"types" -> "functools" [];
+	"types" -> "_collections_abc" [];
+	"io" -> "_io" [];
+	"io" -> "abc" [];
+	"io" -> "warnings" [];
+	"re._parser" -> "warnings" [];
+	"re._parser" -> "unicodedata" [];
+	"re._constants" -> "_sre" [];
+	"re._compiler" -> "_sre" [];
+	"re._compiler" -> "sys" [];
+	"re" -> "enum" [];
+	"re" -> "functools" [];
+	"re" -> "warnings" [];
+	"re" -> "copyreg" [];
+	"_weakrefset" -> "_weakref" [];
+	"_weakrefset" -> "types" [];
+	"functools" -> "abc" [];
+	"functools" -> "collections" [];
+	"functools" -> "reprlib" [];
+	"functools" -> "_thread" [];
+	"functools" -> "types" [];
+	"functools" -> "_functools" [];
+	"functools" -> "weakref" [];
+	"functools" -> "typing" [];
+	"sre_compile" -> "warnings" [];
+	"sre_compile" -> "re" [];
 	"encodings.zlib_codec" -> "codecs" [];
 	"encodings.zlib_codec" -> "zlib" [];
 	"encodings.uu_codec" -> "codecs" [];
@@ -3913,70 +3972,6 @@ charset="UTF-8";
 	"encodings" -> "codecs" [];
 	"encodings" -> "sys" [];
 	"encodings" -> "_winapi" [];
-	"functools" -> "abc" [];
-	"functools" -> "collections" [];
-	"functools" -> "reprlib" [];
-	"functools" -> "_thread" [];
-	"functools" -> "types" [];
-	"functools" -> "_functools" [];
-	"functools" -> "weakref" [];
-	"functools" -> "typing" [];
-	"os" -> "abc" [];
-	"os" -> "sys" [];
-	"os" -> "stat" [];
-	"os" -> "_collections_abc" [];
-	"os" -> "posix" [];
-	"os" -> "posixpath" [];
-	"os" -> "nt" [];
-	"os" -> "ntpath" [];
-	"os" -> "os.path" [];
-	"os" -> "warnings" [];
-	"os" -> "subprocess" [];
-	"os" -> "io" [];
-	"sre_parse" -> "warnings" [];
-	"sre_parse" -> "re" [];
-	"_weakrefset" -> "_weakref" [];
-	"_weakrefset" -> "types" [];
-	"abc" -> "_abc" [];
-	"abc" -> "_py_abc" [];
-	"_py_abc" -> "_weakrefset" [];
-	"types" -> "sys" [];
-	"types" -> "functools" [];
-	"types" -> "_collections_abc" [];
-	"copyreg" -> "functools" [];
-	"copyreg" -> "operator" [];
-	"operator" -> "builtins" [];
-	"operator" -> "functools" [];
-	"operator" -> "_operator" [];
-	"genericpath" -> "os" [];
-	"genericpath" -> "stat" [];
-	"weakref" -> "_weakref" [];
-	"weakref" -> "_weakrefset" [];
-	"weakref" -> "_collections_abc" [];
-	"weakref" -> "sys" [];
-	"weakref" -> "itertools" [];
-	"weakref" -> "copy" [];
-	"weakref" -> "atexit" [];
-	"weakref" -> "gc" [];
-	"sre_compile" -> "warnings" [];
-	"sre_compile" -> "re" [];
-	"_collections_abc" -> "abc" [];
-	"_collections_abc" -> "sys" [];
-	"heapq" -> "_heapq" [];
-	"collections.abc" -> "_collections_abc" [];
-	"collections" -> "_collections_abc" [];
-	"collections" -> "sys" [];
-	"collections" -> "itertools" [];
-	"collections" -> "keyword" [];
-	"collections" -> "operator" [];
-	"collections" -> "reprlib" [];
-	"collections" -> "_weakref" [];
-	"collections" -> "_collections" [];
-	"collections" -> "heapq" [];
-	"collections" -> "copy" [];
-	"io" -> "_io" [];
-	"io" -> "abc" [];
-	"io" -> "warnings" [];
 	"warnings" -> "sys" [];
 	"warnings" -> "linecache" [];
 	"warnings" -> "tracemalloc" [];
@@ -3990,15 +3985,43 @@ charset="UTF-8";
 	"tracemalloc" -> "os.path" [];
 	"tracemalloc" -> "pickle" [];
 	"tracemalloc" -> "_tracemalloc" [];
-	"linecache" -> "functools" [];
-	"linecache" -> "sys" [];
-	"linecache" -> "os" [];
-	"linecache" -> "tokenize" [];
-	"reprlib" -> "builtins" [];
-	"reprlib" -> "itertools" [];
-	"reprlib" -> "_thread" [];
-	"sre_constants" -> "warnings" [];
-	"sre_constants" -> "re" [];
+	"traceback" -> "itertools" [];
+	"traceback" -> "linecache" [];
+	"traceback" -> "sys" [];
+	"traceback" -> "textwrap" [];
+	"traceback" -> "contextlib" [];
+	"traceback" -> "ast" [];
+	"traceback" -> "unicodedata" [];
+	"abc" -> "_abc" [];
+	"abc" -> "_py_abc" [];
+	"_py_abc" -> "_weakrefset" [];
+	"_collections_abc" -> "abc" [];
+	"_collections_abc" -> "sys" [];
+	"collections.abc" -> "_collections_abc" [];
+	"collections" -> "_collections_abc" [];
+	"collections" -> "sys" [];
+	"collections" -> "itertools" [];
+	"collections" -> "keyword" [];
+	"collections" -> "operator" [];
+	"collections" -> "reprlib" [];
+	"collections" -> "_weakref" [];
+	"collections" -> "_collections" [];
+	"collections" -> "heapq" [];
+	"collections" -> "copy" [];
+	"weakref" -> "_weakref" [];
+	"weakref" -> "_weakrefset" [];
+	"weakref" -> "_collections_abc" [];
+	"weakref" -> "sys" [];
+	"weakref" -> "itertools" [];
+	"weakref" -> "copy" [];
+	"weakref" -> "atexit" [];
+	"weakref" -> "gc" [];
+	"enum" -> "sys" [];
+	"enum" -> "builtins" [];
+	"enum" -> "types" [];
+	"enum" -> "operator" [];
+	"enum" -> "functools" [];
+	"enum" -> "warnings" [];
 	"_posixsubprocess" -> "gc" [];
 	"datetime" -> "time" [];
 	"datetime" -> "math" [];
@@ -4106,6 +4129,7 @@ charset="UTF-8";
 	"scapy.arch.bpf.core" -> "scapy" [];
 	"scapy.arch.bpf.pfroute" -> "scapy" [];
 	"scapy.libs.extcap" -> "scapy" [];
+	"winlldp.capture_subprocess" -> "scapy" [];
 	"winlldp.system_info" -> "win32com" [];
 	"pywin.dialogs.status" -> "pywin" [];
 	"pywin.dialogs.list" -> "pywin" [];
@@ -4206,8 +4230,8 @@ charset="UTF-8";
 	"click.exceptions" -> "collections" [];
 	"click.decorators" -> "importlib" [];
 	"click" -> "importlib" [];
-	"traceback" -> "collections" [];
 	"tracemalloc" -> "collections" [];
+	"traceback" -> "collections" [];
 	"win32com.client.selecttlb" -> "pywin" [];
 	"scapy.layers.msrpce.raw.ms_samr" -> "scapy" [];
 	"scapy.layers.tls.crypto.kx_algs" -> "scapy" [];

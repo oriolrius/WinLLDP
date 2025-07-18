@@ -9,11 +9,36 @@ from .config import Config
 from .lldp_sender import LLDPSender
 from .lldp_receiver import LLDPReceiver
 from .system_info import SystemInfo
+from .file_debug import debug_open as open
+from .file_debug import set_verbose as set_file_verbose
+
+
+def setup_logging(verbose):
+    """Set up logging based on verbose flag"""
+    import logging
+    
+    if verbose:
+        logging.basicConfig(
+            level=logging.DEBUG, 
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            force=True
+        )
+        set_file_verbose(True)
+    else:
+        logging.basicConfig(
+            level=logging.INFO, 
+            format='%(levelname)s:%(name)s:%(message)s',
+            force=True
+        )
+        set_file_verbose(False)
 
 
 @click.group()
-def cli():
+@click.pass_context
+def cli(ctx):
     """Windows LLDP Service CLI"""
+    # Store context for subcommands
+    ctx.ensure_object(dict)
     pass
 
 
@@ -25,21 +50,37 @@ def capture():
 
 @capture.command('start')
 @click.option('--env-file', '-e', help='Path to .env configuration file')
-def capture_start(env_file):
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def capture_start(env_file, verbose):
     """Start LLDP packet capture subprocess"""
+    setup_logging(verbose)
+    
+    if verbose:
+        click.echo("Verbose mode enabled")
+    
     config = Config(env_file)
     receiver = LLDPReceiver(config)
+    
+    if verbose:
+        click.echo(f"Configuration loaded:")
+        click.echo(f"  Neighbors file: {config.neighbors_file}")
+        click.echo(f"  Capture interval: {config.interval}s")
+        click.echo(f"  TTL: {config.ttl}s")
+    
     if receiver.start_capture():
         click.echo("LLDP capture started successfully")
-        click.echo(f"Neighbors file: {config.neighbors_file}")
+        if not verbose:
+            click.echo(f"Neighbors file: {config.neighbors_file}")
     else:
         click.echo("Failed to start LLDP capture", err=True)
 
 
 @capture.command('stop')
 @click.option('--env-file', '-e', help='Path to .env configuration file')
-def capture_stop(env_file):
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def capture_stop(env_file, verbose):
     """Stop LLDP packet capture subprocess"""
+    setup_logging(verbose)
     config = Config(env_file)
     receiver = LLDPReceiver(config)
     if receiver.stop_capture():
@@ -50,8 +91,10 @@ def capture_stop(env_file):
 
 @capture.command('status')
 @click.option('--env-file', '-e', help='Path to .env configuration file')
-def capture_status(env_file):
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def capture_status(env_file, verbose):
     """Show LLDP capture subprocess status"""
+    setup_logging(verbose)
     config = Config(env_file)
     receiver = LLDPReceiver(config)
     status = receiver.get_capture_status()
@@ -68,8 +111,10 @@ def capture_status(env_file):
 
 @capture.command('log')
 @click.option('--lines', '-n', default=20, help='Number of lines to show')
-def capture_log(lines):
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def capture_log(lines, verbose):
     """Show capture process log"""
+    setup_logging(verbose)
     import os
     import tempfile
     
@@ -102,8 +147,10 @@ def capture_log(lines):
 @cli.command()
 @click.option('--env-file', '-e', help='Path to .env configuration file')
 @click.option('--watch', '-w', is_flag=True, help='Watch neighbors continuously')
-def show_neighbors(env_file, watch):
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def show_neighbors(env_file, watch, verbose):
     """Show discovered LLDP neighbors"""
+    setup_logging(verbose)
     import json
     from datetime import datetime, timedelta
     
@@ -202,6 +249,7 @@ def show_neighbors(env_file, watch):
 @click.option('--verbose', '-v', is_flag=True, help='Verbose output')
 def send(env_file, interface, verbose):
     """Send LLDP packets immediately"""
+    setup_logging(verbose)
     config = Config(env_file)
     
     # Override interface if specified
@@ -223,8 +271,10 @@ def send(env_file, interface, verbose):
 
 
 @cli.command()
-def show_interfaces():
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def show_interfaces(verbose):
     """Show network interfaces"""
+    setup_logging(verbose)
     system_info = SystemInfo()
     interfaces = system_info.get_interfaces()
     
@@ -246,8 +296,10 @@ def show_interfaces():
 
 @cli.command()
 @click.option('--env-file', '-e', help='Path to .env configuration file')
-def show_config(env_file):
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def show_config(env_file, verbose):
     """Show current configuration"""
+    setup_logging(verbose)
     try:
         config = Config(env_file)
         click.echo("Current Configuration:")
@@ -308,17 +360,23 @@ def service():
 
 
 @service.command('install')
-def service_install():
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def service_install(verbose):
     """Install as Windows service"""
+    setup_logging(verbose)
     
     try:
         # Check if NSSM is available
+        if verbose:
+            click.echo("Checking for NSSM installation...")
         result = subprocess.run(['nssm', 'version'], capture_output=True, text=True)
         if result.returncode != 0:
             click.echo("Error: NSSM not found. Please install it first:", err=True)
             click.echo("  winget install NSSM")
             click.echo("Or download from https://nssm.cc/")
             return
+        if verbose:
+            click.echo(f"NSSM version: {result.stdout.strip()}")
     except FileNotFoundError:
         click.echo("Error: NSSM not found. Please install it first:", err=True)
         click.echo("  winget install NSSM")
@@ -329,16 +387,30 @@ def service_install():
     python_exe = sys.executable
     project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     
+    if verbose:
+        click.echo("Installation details:")
+        click.echo(f"  Python executable: {python_exe}")
+        click.echo(f"  Project directory: {project_dir}")
+        click.echo(f"  Service module: winlldp.service_wrapper")
+    
     click.echo("Installing WinLLDP service...")
     
     # First check if service exists
+    if verbose:
+        click.echo("Checking if service already exists...")
     check_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
     service_exists = check_result.returncode == 0
     
     if service_exists:
         click.echo("Service already exists, updating configuration...")
+        if verbose:
+            click.echo("Stopping existing service...")
         # Stop the service first
-        subprocess.run(['nssm', 'stop', 'WinLLDP'], capture_output=True)
+        result = subprocess.run(['nssm', 'stop', 'WinLLDP'], capture_output=True, text=True)
+        if verbose:
+            click.echo(f"  Stop command result: {result.returncode}")
+            if result.stdout:
+                click.echo(f"  Output: {result.stdout.strip()}")
         # Wait for service to stop
         click.echo("Waiting for service to stop...", nl=False)
         for i in range(30):
@@ -352,7 +424,13 @@ def service_install():
             click.echo(" TIMEOUT")
         
         # Remove the service
-        subprocess.run(['nssm', 'remove', 'WinLLDP', 'confirm'], capture_output=True)
+        if verbose:
+            click.echo("Removing existing service...")
+        result = subprocess.run(['nssm', 'remove', 'WinLLDP', 'confirm'], capture_output=True, text=True)
+        if verbose:
+            click.echo(f"  Remove command result: {result.returncode}")
+            if result.stderr:
+                click.echo(f"  Error: {result.stderr.strip()}")
         # Wait for removal
         click.echo("Waiting for service removal...", nl=False)
         for i in range(20):
@@ -372,10 +450,19 @@ def service_install():
         '-m', 'winlldp.service_wrapper'
     ]
     
+    if verbose:
+        click.echo("Installing service with NSSM...")
+        click.echo(f"  Command: {' '.join(install_cmd)}")
+    
     result = subprocess.run(install_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         click.echo(f"Error installing service: {result.stderr}", err=True)
         return
+    
+    if verbose:
+        click.echo(f"  Installation result: {result.returncode}")
+        if result.stdout:
+            click.echo(f"  Output: {result.stdout.strip()}")
     
     # Wait for service to be registered in Windows
     click.echo("Waiting for service registration...", nl=False)
@@ -392,6 +479,9 @@ def service_install():
         click.echo("Error: Service installation timed out", err=True)
         return
     
+    if verbose:
+        click.echo("Configuring service parameters...")
+    
     commands = [
         ['nssm', 'set', 'WinLLDP', 'AppDirectory', project_dir],
         ['nssm', 'set', 'WinLLDP', 'DisplayName', 'Windows LLDP Service'],
@@ -406,6 +496,11 @@ def service_install():
 ]
 
     for cmd in commands:
+        if verbose:
+            param_name = cmd[3]
+            param_value = cmd[4] if len(cmd) > 4 else ''
+            click.echo(f"  Setting {param_name}: {param_value}")
+        
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             # Don't fail on description setting errors (common on some Windows versions)
@@ -452,21 +547,97 @@ def service_uninstall():
 
 
 @service.command('start')
-def service_start():
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def service_start(verbose):
     """Start Windows service"""
+    setup_logging(verbose)
     import subprocess
     
     try:
+        # First check if service exists
+        if verbose:
+            click.echo("Checking if service exists...")
+        check_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+        if check_result.returncode != 0:
+            click.echo("Error: Service WinLLDP not found. Please install it first.", err=True)
+            click.echo("Run: winlldp service install")
+            return
+        
+        if verbose:
+            click.echo("Current service status:")
+            # Parse service status
+            for line in check_result.stdout.split('\n'):
+                if 'STATE' in line:
+                    click.echo(f"  {line.strip()}")
+        
+        # Check NSSM configuration
+        if verbose:
+            click.echo("Checking NSSM configuration...")
+            config_checks = [
+                ('Application', ['nssm', 'get', 'WinLLDP', 'Application']),
+                ('AppDirectory', ['nssm', 'get', 'WinLLDP', 'AppDirectory']),
+                ('AppParameters', ['nssm', 'get', 'WinLLDP', 'AppParameters']),
+                ('Start', ['nssm', 'get', 'WinLLDP', 'Start']),
+            ]
+            
+            for name, cmd in config_checks:
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    click.echo(f"  {name}: {result.stdout.strip()}")
+                else:
+                    click.echo(f"  {name}: Unable to retrieve")
+        
         click.echo("Starting WinLLDP service...")
+        if verbose:
+            click.echo("Executing: nssm start WinLLDP")
+        
         result = subprocess.run(['nssm', 'start', 'WinLLDP'], capture_output=True, text=True)
+        
+        if verbose:
+            click.echo(f"Start command result: {result.returncode}")
+            if result.stdout:
+                click.echo(f"Output: {result.stdout.strip()}")
+            if result.stderr:
+                click.echo(f"Error output: {result.stderr.strip()}")
         
         if result.returncode == 0:
             click.echo("Service started successfully")
+            
+            # Wait and check if service is actually running
+            if verbose:
+                click.echo("Verifying service status...")
+                time.sleep(2)
+                status_check = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+                for line in status_check.stdout.split('\n'):
+                    if 'STATE' in line:
+                        click.echo(f"  {line.strip()}")
         else:
             if "already running" in result.stderr:
                 click.echo("Service is already running")
             else:
                 click.echo(f"Error starting service: {result.stderr}", err=True)
+                
+                # Get more details about the error
+                if verbose:
+                    click.echo("\nChecking Windows Event Log for errors...")
+                    # Check if service wrapper exists
+                    wrapper_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'winlldp', 'service_wrapper.py')
+                    if os.path.exists(wrapper_path):
+                        click.echo(f"  Service wrapper exists: {wrapper_path}")
+                    else:
+                        click.echo(f"  Service wrapper NOT FOUND: {wrapper_path}")
+                    
+                    # Check service log file
+                    log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'nssm_service.log')
+                    if os.path.exists(log_path):
+                        click.echo(f"\nService log file: {log_path}")
+                        with open(log_path, 'r') as f:
+                            lines = f.readlines()
+                            if lines:
+                                click.echo("  Last 10 lines:")
+                                for line in lines[-10:]:
+                                    click.echo(f"    {line.rstrip()}")
+                    
     except FileNotFoundError:
         click.echo("Error: NSSM not found. Please install the service first.", err=True)
         click.echo("Run: winlldp service install")
@@ -551,6 +722,19 @@ def service_restart():
             click.echo(f"Error restarting service: {result.stderr}", err=True)
     except FileNotFoundError:
         click.echo("Error: NSSM not found", err=True)
+
+
+@cli.command('capture-subprocess', hidden=True)
+@click.argument('log_file')
+@click.argument('neighbors_file')
+@click.argument('pid_file')
+def capture_subprocess_cmd(log_file, neighbors_file, pid_file):
+    """Internal command for running capture subprocess from frozen executable"""
+    # This is a hidden command used internally when running from PyInstaller bundle
+    from .capture_subprocess import main
+    # Update sys.argv to match what the subprocess expects
+    sys.argv = [sys.argv[0], log_file, neighbors_file, pid_file]
+    main()
 
 
 if __name__ == '__main__':

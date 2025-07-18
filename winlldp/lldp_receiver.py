@@ -11,6 +11,7 @@ from .lldp_packet import LLDPPacket
 from .system_info import SystemInfo
 from .config import Config
 from .logger import get_logger
+from .file_debug import debug_open as open
 
 
 class Neighbor:
@@ -173,6 +174,21 @@ class LLDPReceiver:
         
         # Start the subprocess
         log_file = os.path.join(tempfile.gettempdir(), 'winlldp_capture.log')
+        
+        # For frozen executables, recalculate the neighbors file path
+        if getattr(sys, 'frozen', False):
+            neighbors_file_path = os.path.join(tempfile.gettempdir(), 'neighbors.json')
+            pid_file_path = os.path.join(tempfile.gettempdir(), 'capture.pid')
+        else:
+            neighbors_file_path = self._neighbors_file
+            pid_file_path = self._pid_file
+            
+        # Escape backslashes for Windows paths
+        log_file_escaped = log_file.replace('\\', '\\\\')
+        neighbors_file_path_escaped = neighbors_file_path.replace('\\', '\\\\')
+        pid_file_path_escaped = pid_file_path.replace('\\', '\\\\')
+        sys_path_escaped = sys.path[0].replace('\\', '\\\\')
+        
         capture_script = f"""
 import sys
 import json
@@ -181,7 +197,7 @@ import traceback
 from datetime import datetime
 
 # Log file for debugging
-log_file = r'{log_file}'
+log_file = '{log_file_escaped}'
 
 def log(msg):
     try:
@@ -191,20 +207,31 @@ def log(msg):
     except:
         pass
 
+def log_file_op(operation, filepath, mode=''):
+    # Log file operations in the capture subprocess
+    if mode:
+        log(f"FILE_OP: {{operation}} '{{filepath}}' mode={{mode}}")
+    else:
+        log(f"FILE_OP: {{operation}} '{{filepath}}')")
+
 try:
     log("Starting LLDP capture process")
     log(f"PID: {{os.getpid()}}")
     log(f"Python: {{sys.executable}}")
+    log(f"Neighbors file will be: {neighbors_file_path_escaped}")
+    log(f"PID file will be: {pid_file_path_escaped}")
     
     # Write PID
-    with open(r'{self._pid_file}', 'w') as f:
+    log_file_op("OPEN", '{pid_file_path_escaped}', 'w')
+    with open('{pid_file_path_escaped}', 'w') as f:
         f.write(str(os.getpid()))
+    log_file_op("CLOSE", '{pid_file_path_escaped}')
     log("PID file written")
     
     # Import required modules
     log("Importing modules...")
     from scapy.all import sniff, Ether
-    sys.path.insert(0, r'{sys.path[0]}')
+    sys.path.insert(0, '{sys_path_escaped}')
     from winlldp.lldp_packet import LLDPPacket
     from winlldp.system_info import SystemInfo
     log("Modules imported successfully")
@@ -221,13 +248,15 @@ try:
                 neighbor_data = lldp_packet.to_dict()
                 
                 # Save neighbor data directly to file
-                neighbors_file = r'{self._neighbors_file}'
+                neighbors_file = '{neighbors_file_path_escaped}'
                 log(f"Saving to file: {{neighbors_file}}")
                 
                 # Load existing neighbors
                 try:
+                    log_file_op("OPEN", neighbors_file, 'r')
                     with open(neighbors_file, 'r') as f:
                         neighbors = json.load(f)
+                    log_file_op("CLOSE", neighbors_file)
                 except:
                     neighbors = {{}}
                     log("No existing neighbors file, creating new one")
@@ -247,8 +276,10 @@ try:
                 }}
                 
                 # Save back to file
+                log_file_op("OPEN", neighbors_file, 'w')
                 with open(neighbors_file, 'w') as f:
                     json.dump(neighbors, f, indent=2)
+                log_file_op("CLOSE", neighbors_file)
                 
                 log(f"Saved neighbor data to file ({{len(neighbors)}} total neighbors)")
                 
@@ -289,7 +320,8 @@ except Exception as e:
 finally:
     # Clean up PID file
     try:
-        os.remove(r'{self._pid_file}')
+        log_file_op("REMOVE", '{pid_file_path_escaped}')
+        os.remove('{pid_file_path_escaped}')
         log("PID file removed")
     except:
         pass
@@ -302,27 +334,15 @@ finally:
         # Check if running from PyInstaller bundle
         if getattr(sys, 'frozen', False):
             # We're running from a PyInstaller bundle
-            # Create a temporary Python script and execute it with the bundled Python
-            import tempfile
-            script_fd, script_path = tempfile.mkstemp(suffix='.py', text=True)
-            try:
-                with os.fdopen(script_fd, 'w') as f:
-                    f.write(capture_script)
-                
-                # For frozen executables, we need to use a different approach
-                # Write script to file and run via capture-internal command
-                self.subprocess = subprocess.Popen(
-                    [sys.executable, 'capture-internal', script_path],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
-                )
-            except:
-                # Clean up on error
-                if os.path.exists(script_path):
-                    os.unlink(script_path)
-                raise
+            # Use the capture-subprocess command
+            self.subprocess = subprocess.Popen(
+                [sys.executable, 'capture-subprocess', 
+                 log_file, neighbors_file_path, pid_file_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == 'nt' else 0
+            )
         else:
             # Normal Python execution
             self.subprocess = subprocess.Popen(

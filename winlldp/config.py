@@ -1,6 +1,12 @@
 import os
+import sys
+import tempfile
 from typing import Optional
 from dotenv import load_dotenv
+try:
+    from .file_debug import debug_open as open
+except ImportError:
+    pass  # Use built-in open if debug not available
 
 
 class Config:
@@ -22,10 +28,14 @@ class Config:
         # File Configuration
         self.neighbors_file = os.getenv('LLDP_NEIGHBORS_FILE', 'neighbors.json')
         
-        # If it's not an absolute path, make it relative to the project root
+        # If it's not an absolute path, make it relative to the appropriate directory
         if not os.path.isabs(self.neighbors_file):
-            # Get project root (parent of winlldp package)
-            project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            if getattr(sys, 'frozen', False):
+                # Running from PyInstaller bundle - use temp directory like the log file
+                project_root = tempfile.gettempdir()
+            else:
+                # Normal Python execution - parent of winlldp package
+                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             self.neighbors_file = os.path.join(project_root, self.neighbors_file)
         
         # Validate configuration
