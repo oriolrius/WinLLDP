@@ -1,0 +1,88 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 0.9.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        irm https://astral.sh/uv/install.ps1 | iex
+        $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+    
+    - name: Install dependencies
+      run: |
+        uv sync
+    
+    - name: Verify version matches pyproject.toml
+      run: |
+        $pyproject_version = (Get-Content pyproject.toml | Select-String 'version = "(.+)"').Matches.Groups[1].Value
+        if ($pyproject_version -ne "${{ inputs.version }}") {
+          Write-Host "Error: Version mismatch!"
+          Write-Host "pyproject.toml version: $pyproject_version"
+          Write-Host "Input version: ${{ inputs.version }}"
+          exit 1
+        }
+        Write-Host "✓ Version verified: ${{ inputs.version }}"
+    
+    - name: Build executable
+      run: |
+        uv run pyinstaller --clean pyinstaller.spec
+    
+    - name: Test executable
+      run: |
+        .\dist\winlldp.exe version
+    
+    - name: Create tag
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git tag -a "v${{ inputs.version }}" -m "Release v${{ inputs.version }}"
+        git push origin "v${{ inputs.version }}"
+    
+    - name: Rename executable
+      run: |
+        Move-Item -Path "dist\winlldp.exe" -Destination "dist\winlldp-v${{ inputs.version }}.exe"
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ inputs.version }}
+        name: WinLLDP v${{ inputs.version }}
+        body: |
+          ## WinLLDP v${{ inputs.version }}
+          
+          Windows LLDP Service
+          
+          ### Installation
+          1. Download `winlldp-v${{ inputs.version }}.exe`
+          2. Run as Administrator: `winlldp-v${{ inputs.version }}.exe service install`
+          3. Start the service: `winlldp-v${{ inputs.version }}.exe service start`
+          
+          ### What's New
+          - See commits for changes
+        files: dist\winlldp-v${{ inputs.version }}.exe
+        prerelease: ${{ inputs.prerelease }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

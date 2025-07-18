@@ -1,0 +1,61 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.gitignore'
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install uv
+      run: |
+        irm https://astral.sh/uv/install.ps1 | iex
+        $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
+    
+    - name: Install dependencies
+      run: |
+        uv sync
+    
+    - name: Run linting (optional - add when you have linting set up)
+      continue-on-error: true
+      run: |
+        # uv run ruff check .
+        echo "Linting not configured yet"
+    
+    - name: Build executable
+      run: |
+        uv run pyinstaller --clean pyinstaller.spec
+    
+    - name: Test executable exists
+      run: |
+        if (Test-Path "dist\winlldp.exe") {
+          Write-Host "✓ Build successful: winlldp.exe created"
+          # Test basic command
+          .\dist\winlldp.exe version
+        } else {
+          Write-Host "✗ Build failed: winlldp.exe not found"
+          exit 1
+        }
+    
+    - name: Upload artifact for testing
+      uses: actions/upload-artifact@v4
+      with:
+        name: winlldp-dev-${{ github.sha }}
+        path: dist\winlldp.exe
+        retention-days: 7
