@@ -2,6 +2,8 @@
 neighbors.json
 capture.pid
 nssm_service.log
+dist/
+build/
 # Python
 __pycache__/
 *.pyc

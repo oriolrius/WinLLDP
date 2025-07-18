@@ -385,13 +385,23 @@ def service_install(verbose):
     
     # Get paths
     python_exe = sys.executable
-    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    
+    # Determine if we're running from a frozen executable
+    if getattr(sys, 'frozen', False):
+        # Running from PyInstaller bundle
+        project_dir = os.path.dirname(python_exe)
+        service_args = 'service-run'
+    else:
+        # Normal Python execution
+        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        service_args = '-m winlldp.service_wrapper'
     
     if verbose:
         click.echo("Installation details:")
-        click.echo(f"  Python executable: {python_exe}")
-        click.echo(f"  Project directory: {project_dir}")
-        click.echo(f"  Service module: winlldp.service_wrapper")
+        click.echo(f"  Executable: {python_exe}")
+        click.echo(f"  Working directory: {project_dir}")
+        click.echo(f"  Service command: {python_exe} {service_args}")
+        click.echo(f"  Frozen executable: {getattr(sys, 'frozen', False)}")
     
     click.echo("Installing WinLLDP service...")
     
@@ -444,11 +454,20 @@ def service_install(verbose):
             click.echo(" TIMEOUT")
     
     # Install the service with all parameters
-    install_cmd = [
-        'nssm', 'install', 'WinLLDP',
-        python_exe,
-        '-m', 'winlldp.service_wrapper'
-    ]
+    if getattr(sys, 'frozen', False):
+        # For frozen executable, use the service-run command
+        install_cmd = [
+            'nssm', 'install', 'WinLLDP',
+            python_exe,
+            'service-run'
+        ]
+    else:
+        # For normal Python, use module execution
+        install_cmd = [
+            'nssm', 'install', 'WinLLDP',
+            python_exe,
+            '-m', 'winlldp.service_wrapper'
+        ]
     
     if verbose:
         click.echo("Installing service with NSSM...")
@@ -508,24 +527,43 @@ def service_install(verbose):
                 click.echo(f"Warning: {' '.join(cmd[3:5])}: {result.stderr.strip()}")
     
     click.echo("Service installed successfully!")
-    click.echo(f"  Python: {python_exe}")
-    click.echo(f"  Module: winlldp.service_wrapper")
-    click.echo(f"  Directory: {project_dir}")
+    click.echo(f"  Executable: {python_exe}")
+    if getattr(sys, 'frozen', False):
+        click.echo(f"  Command: service-run")
+    else:
+        click.echo(f"  Module: winlldp.service_wrapper")
+    click.echo(f"  Working directory: {project_dir}")
     click.echo("")
     click.echo("To start the service, run: winlldp service start")
 
 
 @service.command('uninstall')
-def service_uninstall():
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def service_uninstall(verbose):
     """Uninstall Windows service"""
+    setup_logging(verbose)
     import subprocess
     
     try:
         # Check if service exists
+        if verbose:
+            click.echo("Checking if service exists...")
         result = subprocess.run(['nssm', 'status', 'WinLLDP'], capture_output=True, text=True)
         if result.returncode != 0:
             click.echo("Service WinLLDP not found")
             return
+        
+        if verbose:
+            click.echo(f"Current service status: {result.stdout.strip()}")
+            
+            # Get service configuration before removal
+            click.echo("\nService configuration before removal:")
+            config_items = ['Application', 'AppDirectory', 'AppParameters']
+            for item in config_items:
+                cmd_result = subprocess.run(['nssm', 'get', 'WinLLDP', item], capture_output=True, text=True)
+                if cmd_result.returncode == 0:
+                    click.echo(f"  {item}: {cmd_result.stdout.strip()}")
+        
     except FileNotFoundError:
         click.echo("Error: NSSM not found", err=True)
         return
@@ -536,12 +574,54 @@ def service_uninstall():
         return
     
     # Stop service first if running
-    subprocess.run(['nssm', 'stop', 'WinLLDP'], capture_output=True)
+    if verbose:
+        click.echo("\nStopping service before removal...")
+    stop_result = subprocess.run(['nssm', 'stop', 'WinLLDP'], capture_output=True, text=True)
+    if verbose:
+        click.echo(f"  Stop result: {stop_result.returncode}")
+        if stop_result.stderr:
+            click.echo(f"  Output: {stop_result.stderr.strip()}")
+    
+    # Wait for service to stop
+    if verbose:
+        click.echo("Waiting for service to stop...")
+    time.sleep(2)
     
     # Remove the service
+    click.echo("Removing service...")
+    if verbose:
+        click.echo("Executing: nssm remove WinLLDP confirm")
+    
     result = subprocess.run(['nssm', 'remove', 'WinLLDP', 'confirm'], capture_output=True, text=True)
+    
+    if verbose:
+        click.echo(f"Remove command result: {result.returncode}")
+        if result.stdout:
+            click.echo(f"Output: {result.stdout.strip()}")
+        if result.stderr:
+            click.echo(f"Error output: {result.stderr.strip()}")
+    
     if result.returncode == 0:
         click.echo("Service uninstalled successfully")
+        
+        if verbose:
+            # Verify service is removed
+            click.echo("\nVerifying service removal...")
+            verify_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+            if verify_result.returncode != 0:
+                click.echo("  Service successfully removed from Windows")
+            else:
+                click.echo("  WARNING: Service may still be registered in Windows")
+            
+            # Check for leftover files
+            if getattr(sys, 'frozen', False):
+                log_file = os.path.join(os.path.dirname(sys.executable), 'nssm_service.log')
+            else:
+                log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'nssm_service.log')
+            
+            if os.path.exists(log_file):
+                click.echo(f"\n  Note: Service log file still exists: {log_file}")
+                click.echo("  You may want to delete it manually if no longer needed")
     else:
         click.echo(f"Error uninstalling service: {result.stderr}", err=True)
 
@@ -628,7 +708,11 @@ def service_start(verbose):
                         click.echo(f"  Service wrapper NOT FOUND: {wrapper_path}")
                     
                     # Check service log file
-                    log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'nssm_service.log')
+                    if getattr(sys, 'frozen', False):
+                        log_path = os.path.join(os.path.dirname(sys.executable), 'nssm_service.log')
+                    else:
+                        log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'nssm_service.log')
+                    
                     if os.path.exists(log_path):
                         click.echo(f"\nService log file: {log_path}")
                         with open(log_path, 'r') as f:
@@ -644,16 +728,46 @@ def service_start(verbose):
 
 
 @service.command('stop')
-def service_stop():
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def service_stop(verbose):
     """Stop Windows service"""
+    setup_logging(verbose)
     import subprocess
     
     try:
+        if verbose:
+            click.echo("Checking current service status...")
+            status_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+            if status_result.returncode == 0:
+                for line in status_result.stdout.split('\n'):
+                    if 'STATE' in line:
+                        click.echo(f"  Current status: {line.strip()}")
+        
         click.echo("Stopping WinLLDP service...")
+        if verbose:
+            click.echo("Executing: nssm stop WinLLDP")
+        
         result = subprocess.run(['nssm', 'stop', 'WinLLDP'], capture_output=True, text=True)
+        
+        if verbose:
+            click.echo(f"Stop command result: {result.returncode}")
+            if result.stdout:
+                click.echo(f"Output: {result.stdout.strip()}")
+            if result.stderr:
+                click.echo(f"Error output: {result.stderr.strip()}")
         
         if result.returncode == 0:
             click.echo("Service stopped successfully")
+            
+            if verbose:
+                # Wait and verify service is stopped
+                click.echo("Verifying service is stopped...")
+                time.sleep(2)
+                verify_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+                if verify_result.returncode == 0:
+                    for line in verify_result.stdout.split('\n'):
+                        if 'STATE' in line:
+                            click.echo(f"  Final status: {line.strip()}")
         else:
             if "not running" in result.stderr:
                 click.echo("Service is not running")
@@ -664,24 +778,63 @@ def service_stop():
 
 
 @service.command('status')
-def service_status():
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def service_status(verbose):
     """Show Windows service status"""
+    setup_logging(verbose)
     import subprocess
     import os
     
     try:
+        if verbose:
+            click.echo("Checking service status...")
+        
         result = subprocess.run(['nssm', 'status', 'WinLLDP'], capture_output=True, text=True)
         
         if result.returncode == 0:
             status = result.stdout.strip()
             click.echo(f"WinLLDP service status: {status}")
             
+            if verbose:
+                # Get detailed service info
+                click.echo("\nDetailed service information:")
+                
+                # Get Windows service status
+                sc_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+                if sc_result.returncode == 0:
+                    click.echo("  Windows Service Control:")
+                    for line in sc_result.stdout.split('\n'):
+                        line = line.strip()
+                        if line and any(keyword in line for keyword in ['SERVICE_NAME', 'STATE', 'TYPE', 'WIN32_EXIT_CODE']):
+                            click.echo(f"    {line}")
+                
+                # Get NSSM configuration
+                click.echo("\n  NSSM Configuration:")
+                config_items = [
+                    ('Application', 'Application'),
+                    ('AppDirectory', 'Working Directory'),
+                    ('AppParameters', 'Parameters'),
+                    ('DisplayName', 'Display Name'),
+                    ('Start', 'Startup Type'),
+                    ('ObjectName', 'Run As User'),
+                ]
+                
+                for nssm_param, display_name in config_items:
+                    cmd = ['nssm', 'get', 'WinLLDP', nssm_param]
+                    config_result = subprocess.run(cmd, capture_output=True, text=True)
+                    if config_result.returncode == 0:
+                        value = config_result.stdout.strip()
+                        click.echo(f"    {display_name}: {value}")
+            
             if status == "SERVICE_RUNNING":
                 click.echo("  The service is running")
                 
                 # Show additional info from log
-                project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                log_file = os.path.join(project_dir, 'nssm_service.log')
+                if getattr(sys, 'frozen', False):
+                    log_file = os.path.join(os.path.dirname(sys.executable), 'nssm_service.log')
+                else:
+                    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    log_file = os.path.join(project_dir, 'nssm_service.log')
                 if os.path.exists(log_file):
                     # Get last line with status
                     try:
@@ -691,8 +844,17 @@ def service_status():
                                 if "Service status:" in line:
                                     click.echo(f"  Last status: {line.strip()}")
                                     break
+                        
+                        if verbose and lines:
+                            click.echo(f"\n  Service log file: {log_file}")
+                            click.echo(f"  Log file size: {os.path.getsize(log_file)} bytes")
+                            click.echo("  Last 5 log entries:")
+                            for line in lines[-5:]:
+                                click.echo(f"    {line.rstrip()}")
                     except:
                         pass
+                elif verbose:
+                    click.echo(f"\n  Service log file not found: {log_file}")
             elif status == "SERVICE_STOPPED":
                 click.echo("  The service is stopped")
             elif status == "SERVICE_PAUSED":
@@ -708,16 +870,46 @@ def service_status():
 
 
 @service.command('restart')
-def service_restart():
+@click.option('--verbose', '-v', is_flag=True, help='Enable verbose debug output')
+def service_restart(verbose):
     """Restart Windows service"""
+    setup_logging(verbose)
     import subprocess
     
     try:
+        if verbose:
+            click.echo("Checking current service status...")
+            status_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+            if status_result.returncode == 0:
+                for line in status_result.stdout.split('\n'):
+                    if 'STATE' in line:
+                        click.echo(f"  Current status: {line.strip()}")
+        
         click.echo("Restarting WinLLDP service...")
+        if verbose:
+            click.echo("Executing: nssm restart WinLLDP")
+        
         result = subprocess.run(['nssm', 'restart', 'WinLLDP'], capture_output=True, text=True)
+        
+        if verbose:
+            click.echo(f"Restart command result: {result.returncode}")
+            if result.stdout:
+                click.echo(f"Output: {result.stdout.strip()}")
+            if result.stderr:
+                click.echo(f"Error output: {result.stderr.strip()}")
         
         if result.returncode == 0:
             click.echo("Service restarted successfully")
+            
+            if verbose:
+                # Wait and verify service is running
+                click.echo("\nVerifying service is running...")
+                time.sleep(3)
+                verify_result = subprocess.run(['sc', 'query', 'WinLLDP'], capture_output=True, text=True)
+                if verify_result.returncode == 0:
+                    for line in verify_result.stdout.split('\n'):
+                        if 'STATE' in line:
+                            click.echo(f"  Final status: {line.strip()}")
         else:
             click.echo(f"Error restarting service: {result.stderr}", err=True)
     except FileNotFoundError:
@@ -734,6 +926,14 @@ def capture_subprocess_cmd(log_file, neighbors_file, pid_file):
     from .capture_subprocess import main
     # Update sys.argv to match what the subprocess expects
     sys.argv = [sys.argv[0], log_file, neighbors_file, pid_file]
+    main()
+
+
+@cli.command('service-run', hidden=True)
+def service_run():
+    """Internal command to run the service from frozen executable"""
+    # This is a hidden command used internally when running as a Windows service
+    from .service_wrapper import main
     main()
 
 
