@@ -29,29 +29,21 @@ try:
     
     # Import and run
     from winlldp.config import Config
-    from winlldp.service import WinLLDPService
+    from winlldp.cli_run import SimpleRunner
     
     log("Creating configuration...")
     config = Config()
     
-    log("Creating service...")
-    service = WinLLDPService(config)
+    log("Creating service runner...")
+    runner = SimpleRunner(config)
     
     log("Starting service...")
-    service.start()
     
-    log("Service started successfully, entering main loop...")
-    
-    # Keep the service running
-    while True:
-        time.sleep(30)
-        status = service.get_status()
-        log(f"Service status: running={status['service_running']}, neighbors={status['neighbor_count']}")
+    # Use the simple runner which is more reliable
+    runner.run()
         
 except KeyboardInterrupt:
     log("Received keyboard interrupt")
-    if 'service' in locals():
-        service.stop()
     log("Service stopped")
 except Exception as e:
     log(f"FATAL ERROR: {e}")

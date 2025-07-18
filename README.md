@@ -25,6 +25,12 @@ uv sync
 
 ## Configuration
 
+Copy `env.example` to `.env` and edit it to configure the service:
+
+```powershell
+cp env.example .env  # On Windows, use: copy env.example .env
+```
+
 Edit the `.env` file to configure the service:
 
 ```env

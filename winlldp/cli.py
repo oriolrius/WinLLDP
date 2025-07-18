@@ -257,10 +257,20 @@ def show_config(env_file):
 
 @cli.command()
 @click.option('--env-file', '-e', help='Path to .env configuration file')
-@click.option('--no-log', is_flag=True, help='Disable log monitoring')
-def run(env_file, no_log):
+@click.option('--monitor', is_flag=True, help='Enable advanced monitoring (may cause issues)')
+def run(env_file, monitor):
     """Run full LLDP service (sender + receiver)"""
     config = Config(env_file)
+    
+    # Use simple runner by default (more reliable)
+    if not monitor:
+        from .cli_run import run_simple
+        run_simple(config)
+        return
+    
+    # Advanced monitoring mode (may have responsiveness issues)
+    click.echo("Warning: Monitor mode may become unresponsive. Use --simple for better stability.")
+    
     receiver = LLDPReceiver(config)
     sender = LLDPSender(config)
     

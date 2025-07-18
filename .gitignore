@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.pid
+*.lock
+*.bak
+*.swp
+*.swo
+.DS_Store
+.env
+.env.*
+# Editor
+.vscode/
+.idea/
+*.code-workspace
+# Project files
+neighbors.json
+capture.pid
+nssm_service.log
+uv.lock
+# Windows
+*.exe
+*.dll
+*.obj
+*.lib
+*.exp
+*.pch
+*.pdb
+*.idb
+*.class
+*.psd
+*.sln
+*.suo
+*.user
+*.userosscache
+*.userprefs
+*.dbmdl
+*.dbproj
+*.cache
+*.vspscc
+*.vssscc
+*.vspx
+*.vsix
+*.vsixmanifest
+*.vsmdi
+*.testsettings
+*.vssettings
+*.vstemplate
+*.vsconfig
+# End of file
