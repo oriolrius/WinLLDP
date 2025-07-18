@@ -141,22 +141,140 @@ You should see devices like:
 
 ## Configuration (Optional)
 
-Create a `.env` file in the same directory as `winlldp.exe` to customize behavior:
+WinLLDP can be customized using a `.env` file placed in the same directory as `winlldp.exe`. If no `.env` file is provided, WinLLDP uses sensible defaults.
 
+### Configuration Options
+
+#### LLDP_INTERVAL
+- **Description**: How often to send LLDP packets (in seconds)
+- **Default**: `30`
+- **Valid Range**: 5-3600 seconds
+- **Example**: `LLDP_INTERVAL=60` (send every minute)
+- **Notes**: Lower values increase network traffic but provide faster discovery. Most network devices use 30-60 seconds.
+
+#### LLDP_INTERFACE
+- **Description**: Which network interface(s) to use for LLDP
+- **Default**: `all` (uses all active network interfaces)
+- **Options**:
+  - `all` - Use all network interfaces
+  - `"Interface Name"` - Use specific interface (use quotes if name has spaces)
+- **Examples**:
+  ```env
+  LLDP_INTERFACE=all
+  LLDP_INTERFACE="Ethernet 2"
+  LLDP_INTERFACE="Wi-Fi"
+  ```
+- **Notes**: Use `winlldp.exe show-interfaces` to see available interface names
+
+#### LLDP_SYSTEM_NAME
+- **Description**: System name to advertise in LLDP packets
+- **Default**: `auto` (uses Windows hostname)
+- **Options**:
+  - `auto` - Automatically use computer's hostname
+  - `"Custom Name"` - Any custom string
+- **Examples**:
+  ```env
+  LLDP_SYSTEM_NAME=auto
+  LLDP_SYSTEM_NAME=WebServer01
+  LLDP_SYSTEM_NAME="Building 2 - Room 304"
+  ```
+
+#### LLDP_SYSTEM_DESCRIPTION
+- **Description**: System description in LLDP packets
+- **Default**: `Windows LLDP Service`
+- **Current Behavior**: ⚠️ **This setting is currently ignored**. WinLLDP always sends detailed Windows information including version, build number, and architecture (e.g., "Windows 10.0.26100 AMD64")
+- **Example**: `LLDP_SYSTEM_DESCRIPTION=Database Server` (currently has no effect)
+
+#### LLDP_PORT_DESCRIPTION
+- **Description**: Description of the network port
+- **Default**: `Ethernet Port`
+- **Examples**:
+  ```env
+  LLDP_PORT_DESCRIPTION=Uplink to Core Switch
+  LLDP_PORT_DESCRIPTION=Management Interface
+  ```
+
+#### LLDP_MANAGEMENT_ADDRESS
+- **Description**: IP address to advertise for management purposes
+- **Default**: `auto` (automatically detects primary IP)
+- **Options**:
+  - `auto` - Use the primary IP of the sending interface
+  - `x.x.x.x` - Specific IPv4 address
+- **Examples**:
+  ```env
+  LLDP_MANAGEMENT_ADDRESS=auto
+  LLDP_MANAGEMENT_ADDRESS=192.168.1.100
+  LLDP_MANAGEMENT_ADDRESS=10.0.0.50
+  ```
+- **Notes**: This helps network admins know which IP to use for managing the device
+
+#### LLDP_TTL
+- **Description**: Time To Live - how long (seconds) receivers should keep this device's information
+- **Default**: `120` (2 minutes)
+- **Valid Range**: Must be greater than LLDP_INTERVAL and less than 65536
+- **Recommended**: 3-4 times the LLDP_INTERVAL value
+- **Example**: `LLDP_TTL=180` (3 minutes)
+- **Notes**: After TTL expires, network devices will remove this system from their neighbor tables
+
+#### LLDP_NEIGHBORS_FILE
+- **Description**: Where to store discovered neighbor information
+- **Default**: `neighbors.json` (in the same directory as winlldp.exe)
+- **Options**:
+  - Relative path: `neighbors.json` (relative to exe location)
+  - Absolute path: `C:\ProgramData\WinLLDP\neighbors.json`
+- **Examples**:
+  ```env
+  LLDP_NEIGHBORS_FILE=neighbors.json
+  LLDP_NEIGHBORS_FILE=C:\Logs\lldp_neighbors.json
+  ```
+
+### Example Configuration Files
+
+#### Minimal Configuration (relies on defaults):
 ```env
-# How often to send LLDP packets (seconds)
-LLDP_INTERVAL=30
-
-# Which network interface to use
-LLDP_INTERFACE=all              # Use all interfaces
-#LLDP_INTERFACE="Ethernet 2"    # Use specific interface
-
-# Custom system name (default: your hostname)
-#LLDP_SYSTEM_NAME=MyServer
-
-# Time-to-live for LLDP packets (seconds)
-LLDP_TTL=120
+# Empty file - all defaults will be used
 ```
+
+#### Basic Custom Configuration:
+```env
+# Send LLDP every minute
+LLDP_INTERVAL=60
+
+# Only use the main ethernet interface
+LLDP_INTERFACE="Ethernet"
+
+# Custom identity
+LLDP_SYSTEM_NAME=FileServer01
+```
+
+#### Advanced Configuration:
+```env
+# LLDP Settings
+LLDP_INTERVAL=45
+LLDP_INTERFACE="Ethernet 2"
+LLDP_SYSTEM_NAME=DC-Primary
+LLDP_PORT_DESCRIPTION=Trunk to Core-SW-01 Port Gi1/0/12
+LLDP_MANAGEMENT_ADDRESS=10.0.100.15
+LLDP_TTL=180
+
+# File Storage
+LLDP_NEIGHBORS_FILE=C:\ProgramData\WinLLDP\discovered_devices.json
+```
+
+### Default Behavior (No .env File)
+
+If you run WinLLDP without a `.env` file, these defaults are used:
+
+| Setting | Default Value | Behavior |
+|---------|--------------|----------|
+| LLDP_INTERVAL | 30 | Sends LLDP every 30 seconds |
+| LLDP_INTERFACE | all | Uses all network interfaces |
+| LLDP_SYSTEM_NAME | auto | Uses computer hostname |
+| LLDP_SYSTEM_DESCRIPTION | (ignored) | Sends Windows version info |
+| LLDP_PORT_DESCRIPTION | Ethernet Port | Generic port description |
+| LLDP_MANAGEMENT_ADDRESS | auto | Uses primary IP address |
+| LLDP_TTL | 120 | Neighbors keep info for 2 minutes |
+| LLDP_NEIGHBORS_FILE | neighbors.json | Stores in exe directory |
 
 ## What You'll See
 
