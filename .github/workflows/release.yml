@@ -26,6 +26,7 @@ jobs:
     - name: Install dependencies
       run: |
         uv sync
+        uv pip install pyinstaller
     
     - name: Build executable with PyInstaller
       run: |
