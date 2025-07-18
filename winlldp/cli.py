@@ -123,9 +123,9 @@ def capture_log(lines, verbose):
     """Show capture process log"""
     setup_logging(verbose)
     import os
-    import tempfile
+    from .paths import get_log_file
     
-    log_file = os.path.join(tempfile.gettempdir(), 'winlldp_capture.log')
+    log_file = get_log_file()
     
     if not os.path.exists(log_file):
         click.echo("No log file found. Capture may not have been started yet.")

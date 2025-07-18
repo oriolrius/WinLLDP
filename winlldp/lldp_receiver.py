@@ -69,13 +69,10 @@ class LLDPReceiver:
             self.config = LLDPReceiver._config or Config()
             LLDPReceiver._config = self.config
         
-        # Define file paths based on config
+        # Define file paths from config
         self._neighbors_file = self.config.neighbors_file
-        # PID file in same directory as neighbors file
-        self._pid_file = os.path.join(
-            os.path.dirname(self._neighbors_file), 
-            'capture.pid'
-        )
+        self._pid_file = self.config.pid_file
+        self._log_file = self.config.log_file
         
         # Load existing neighbors if capture is running
         if self.is_capture_running():
@@ -167,16 +164,10 @@ class LLDPReceiver:
             self.logger.info("Capture is already running")
             return False
         
-        # Start the subprocess
-        log_file = os.path.join(tempfile.gettempdir(), 'winlldp_capture.log')
-        
-        # For frozen executables, recalculate the neighbors file path
-        if getattr(sys, 'frozen', False):
-            neighbors_file_path = os.path.join(tempfile.gettempdir(), 'neighbors.json')
-            pid_file_path = os.path.join(tempfile.gettempdir(), 'capture.pid')
-        else:
-            neighbors_file_path = self._neighbors_file
-            pid_file_path = self._pid_file
+        # Use config paths for all files
+        log_file = self._log_file
+        neighbors_file_path = self._neighbors_file
+        pid_file_path = self._pid_file
             
         
         # Start subprocess detached

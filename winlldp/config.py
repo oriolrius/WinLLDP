@@ -3,6 +3,7 @@ import sys
 import tempfile
 from typing import Optional
 from dotenv import load_dotenv
+from .paths import get_runtime_directory, get_neighbors_file, get_pid_file, get_log_file
 try:
     from .file_debug import debug_open as open
 except ImportError:
@@ -26,17 +27,18 @@ class Config:
         self.ttl = int(os.getenv('LLDP_TTL', '120'))
         
         # File Configuration
-        self.neighbors_file = os.getenv('LLDP_NEIGHBORS_FILE', 'neighbors.json')
+        custom_neighbors_file = os.getenv('LLDP_NEIGHBORS_FILE', '')
+        if custom_neighbors_file and os.path.isabs(custom_neighbors_file):
+            # Use custom absolute path if provided
+            self.neighbors_file = custom_neighbors_file
+        else:
+            # Use centralized path resolution
+            self.neighbors_file = get_neighbors_file()
         
-        # If it's not an absolute path, make it relative to the appropriate directory
-        if not os.path.isabs(self.neighbors_file):
-            if getattr(sys, 'frozen', False):
-                # Running from PyInstaller bundle - use temp directory like the log file
-                project_root = tempfile.gettempdir()
-            else:
-                # Normal Python execution - parent of winlldp package
-                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            self.neighbors_file = os.path.join(project_root, self.neighbors_file)
+        # Add other file paths
+        self.pid_file = get_pid_file()
+        self.log_file = get_log_file()
+        self.runtime_dir = get_runtime_directory()
         
         # Validate configuration
         self._validate()

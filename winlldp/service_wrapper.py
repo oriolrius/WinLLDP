@@ -19,15 +19,11 @@ from winlldp.file_debug import debug_open as open
 
 def main():
     """Main entry point for NSSM service wrapper"""
-    # Log to a file in the appropriate directory
-    if getattr(sys, 'frozen', False):
-        # For frozen executable, use the directory where the exe is located
-        log_dir = os.path.dirname(sys.executable)
-    else:
-        # For normal Python, use the project directory
-        log_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # Import paths module
+    from winlldp.paths import get_service_log_file, get_runtime_directory
     
-    log_file = os.path.join(log_dir, "nssm_service.log")
+    # Use centralized path for log file
+    log_file = get_service_log_file()
     
     def log(msg):
         """Write to log file"""
@@ -41,10 +37,13 @@ def main():
         log(f"Python: {sys.executable}")
         log(f"Working directory: {os.getcwd()}")
         
-        # Change to project directory
-        project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        os.chdir(project_dir)
-        log(f"Changed directory to: {os.getcwd()}")
+        # Ensure we're in the runtime directory (exe directory when frozen)
+        runtime_dir = get_runtime_directory()
+        if os.getcwd() != runtime_dir:
+            os.chdir(runtime_dir)
+            log(f"Changed directory to: {os.getcwd()}")
+        else:
+            log(f"Already in runtime directory: {runtime_dir}")
         
         # Create configuration
         log("Creating configuration...")
