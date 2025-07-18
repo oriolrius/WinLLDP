@@ -29,18 +29,40 @@ try:
     
     # Import and run
     from winlldp.config import Config
-    from winlldp.cli_run import SimpleRunner
+    from winlldp.lldp_sender import LLDPSender
+    from winlldp.lldp_receiver import LLDPReceiver
     
     log("Creating configuration...")
     config = Config()
     
-    log("Creating service runner...")
-    runner = SimpleRunner(config)
+    log("Creating components...")
+    receiver = LLDPReceiver(config)
+    sender = LLDPSender(config)
     
-    log("Starting service...")
+    # Check/start capture
+    if receiver.is_capture_running():
+        log("Capture subprocess already running")
+    else:
+        log("Starting capture subprocess...")
+        if receiver.start_capture():
+            log("Capture started successfully")
+        else:
+            log("WARNING: Failed to start capture subprocess")
     
-    # Use the simple runner which is more reliable
-    runner.run()
+    # Start sender
+    log("Starting LLDP sender...")
+    sender.start()
+    log("Service started successfully")
+    
+    # Keep running until interrupted
+    try:
+        while True:
+            time.sleep(60)
+            log("Service is running...")
+    except KeyboardInterrupt:
+        log("Stopping sender...")
+        sender.stop()
+        log("Service stopped")
         
 except KeyboardInterrupt:
     log("Received keyboard interrupt")

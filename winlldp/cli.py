@@ -7,7 +7,6 @@ from .config import Config
 from .lldp_sender import LLDPSender
 from .lldp_receiver import LLDPReceiver
 from .system_info import SystemInfo
-from .service import WinLLDPService
 
 
 @click.group()
@@ -255,111 +254,6 @@ def show_config(env_file):
         click.echo(f"Error loading configuration: {e}", err=True)
 
 
-@cli.command()
-@click.option('--env-file', '-e', help='Path to .env configuration file')
-@click.option('--monitor', is_flag=True, help='Enable advanced monitoring (may cause issues)')
-def run(env_file, monitor):
-    """Run full LLDP service (sender + receiver)"""
-    config = Config(env_file)
-    
-    # Use simple runner by default (more reliable)
-    if not monitor:
-        from .cli_run import run_simple
-        run_simple(config)
-        return
-    
-    # Advanced monitoring mode (may have responsiveness issues)
-    click.echo("Warning: Monitor mode may become unresponsive. Use --simple for better stability.")
-    
-    receiver = LLDPReceiver(config)
-    sender = LLDPSender(config)
-    
-    click.echo("Starting Windows LLDP Service...")
-    click.echo(f"Configuration: {config}")
-    click.echo("\nPress Ctrl+C to stop")
-    
-    # Check if capture is already running
-    if receiver.is_capture_running():
-        click.echo("Note: Capture subprocess is already running")
-    else:
-        # Start capture subprocess
-        click.echo("Starting capture subprocess...")
-        if not receiver.start_capture():
-            click.echo("Warning: Failed to start capture subprocess", err=True)
-    
-    # Start sender thread
-    click.echo("Starting LLDP sender...")
-    sender.start()
-    click.echo("LLDP sender started")
-    
-    # Get log file path
-    import tempfile
-    log_file = os.path.join(tempfile.gettempdir(), 'winlldp_capture.log')
-    if not no_log:
-        click.echo(f"Monitoring capture log: {log_file}")
-    click.echo("\nPress Ctrl+C to stop\n")
-    
-    try:
-        # Keep running and show status periodically
-        last_log_pos = 0
-        status_counter = 0
-        last_status_time = time.time()
-        
-        while True:
-            # Check for log updates (if enabled)
-            if not no_log and os.path.exists(log_file):
-                try:
-                    with open(log_file, 'r') as f:
-                        f.seek(last_log_pos)
-                        new_lines = f.readlines()
-                        if new_lines:
-                            last_log_pos = f.tell()
-                            
-                            for line in new_lines:
-                                if "Received LLDP packet" in line or "ERROR" in line or "WARNING" in line:
-                                    # Extract timestamp and message
-                                    parts = line.strip().split('] ', 1)
-                                    if len(parts) == 2:
-                                        timestamp = parts[0].replace('[', '')
-                                        message = parts[1]
-                                        click.echo(f"[{timestamp}] {message}")
-                except Exception as e:
-                    # Don't let file errors break the loop
-                    pass
-            
-            # Show status every 30 seconds
-            current_time = time.time()
-            if current_time - last_status_time >= 30:
-                last_status_time = current_time
-                try:
-                    if receiver.is_capture_running():
-                        neighbors = receiver.get_neighbors()
-                        click.echo(f"\n[Status] Service running... {len(neighbors)} neighbors discovered")
-                        
-                        # Show summary of neighbors
-                        if neighbors:
-                            click.echo("[Status] Current neighbors:")
-                            for n in neighbors[:5]:  # Show first 5
-                                click.echo(f"  - {n.get('system_name', 'Unknown')} ({n.get('chassis_id', 'Unknown')}) on {n.get('interface', 'Unknown')}")
-                            if len(neighbors) > 5:
-                                click.echo(f"  ... and {len(neighbors) - 5} more")
-                    else:
-                        click.echo("\n[Status] Service running... (capture not active)")
-                except Exception as e:
-                    click.echo(f"\n[Status] Error getting status: {e}")
-            
-            # Sleep briefly to allow Ctrl+C to work
-            time.sleep(0.5)
-            
-    except KeyboardInterrupt:
-        click.echo("\nStopping service...")
-        sender.stop()
-        click.echo("LLDP sender stopped")
-        click.echo("Note: Capture subprocess continues running in background")
-        click.echo("Use 'winlldp capture stop' to stop it")
-    except Exception as e:
-        click.echo(f"\nError: {e}")
-        sender.stop()
 
 
 @cli.command()

@@ -114,10 +114,6 @@ Show configuration:
 winlldp show-config
 ```
 
-Run full service (sender + receiver):
-```bash
-winlldp run
-```
 
 ## How It Works
 

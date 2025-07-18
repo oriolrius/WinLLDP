@@ -114,12 +114,3 @@ class WinLLDPService:
             self.stop()
 
 
-def main():
-    """Main entry point for the service"""
-    config = Config()
-    service = WinLLDPService(config)
-    service.run_forever()
-
-
-if __name__ == '__main__':
-    main()
