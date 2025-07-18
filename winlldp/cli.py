@@ -42,6 +42,13 @@ def cli(ctx):
     pass
 
 
+@cli.command()
+def version():
+    """Show WinLLDP version"""
+    from winlldp import __version__
+    click.echo(f"WinLLDP version {__version__}")
+
+
 @cli.group()
 def capture():
     """LLDP capture management commands"""

@@ -16,6 +16,8 @@ a = Analysis(
         ('winlldp', 'winlldp'),
         # Include env.example as a reference
         ('env.example', '.'),
+        # Include pyproject.toml for version info
+        ('pyproject.toml', '.'),
     ],
     hiddenimports=[
         # Core dependencies
