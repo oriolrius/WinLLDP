@@ -13,10 +13,10 @@ git commit -m "fix: use forward slashes in GitHub release file paths"
 git push origin master
 
 # Delete and recreate the tag one more time
-git push --delete origin v0.9.0
-git tag -d v0.9.0
-git tag -a v0.9.0 -m "Release v0.9.0"
-git push origin v0.9.0
+git push --delete origin v0.9.9
+git tag -d v0.9.9
+git tag -a v0.9.9 -m "Release v0.9.9"
+git push origin v0.9.9
 ```
 
 ### 1. Build and Test (`build.yml`)
