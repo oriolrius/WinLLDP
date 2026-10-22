@@ -1,6 +1,6 @@
 [project]
 name = "winlldp"
-version = "v1.0.0"
+version = "1.0.0"
 description = "LLDP service for Windows"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -19,3 +19,18 @@ winlldp = "winlldp.cli:cli"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "commitizen>=4.0",
+    "pyinstaller>=6.0",
+    "ruff>=0.6",
+]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "pep621"
+tag_format = "v$version"
+update_changelog_on_bump = true
+changelog_incremental = true
+major_version_zero = false
