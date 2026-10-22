@@ -63,6 +63,13 @@ Windows Service (bundled NSSM) → winlldp.exe service-run
 `cargo run --example pktmon_spike` lists Packet Monitor's data sources and streams LLDP frames,
 which helps diagnose interface mapping on other machines.
 
+## Diagrams
+
+The README's diagrams are PlantUML sources in `docs/diagrams/*.puml` (shared style in
+`_style.iuml`), rendered to the committed `*.svg` by `just diagrams`
+(`scripts/render-diagrams.sh`, PlantUML API server at `PLANTUML_API_BASE`, default
+<https://plantuml.joor.net>). Edit the `.puml`, render, and commit both.
+
 ## Bundled components
 
 `vendor/xdp-for-windows/<version>/` (signed driver package, unmodified) and `vendor/nssm/<version>/`

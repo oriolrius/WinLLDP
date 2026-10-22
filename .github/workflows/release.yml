@@ -2,8 +2,9 @@ name: Release
 
 # Releases are cut with commitizen: `uvx --from commitizen cz bump` updates the
 # version in Cargo.toml and CHANGELOG.md, commits and tags vX.Y.Z; pushing the tag
-# runs this workflow. v1.x tags (Python, master) are built by the release.yml of
-# the tagged commit, so both lines release independently.
+# runs this workflow, which publishes the executable, a ready-to-use zip and their
+# SHA-256 sums. A tag runs the release.yml of its own commit, so the v1.x (Python,
+# branch v1) and v2.x lines release independently.
 on:
   push:
     tags: ['v*']
@@ -48,13 +49,25 @@ jobs:
         shell: bash
         run: uvx --from commitizen cz changelog "${GITHUB_REF_NAME#v}" --dry-run > release-notes.md
 
-      - name: Name the executable after the version
-        run: Copy-Item target\release\winlldp.exe "winlldp-${{ github.ref_name }}.exe"
+      - name: Package the release
+        shell: pwsh
+        run: |
+          $name = "winlldp-${{ github.ref_name }}-windows-x64"
+          New-Item -ItemType Directory -Force release, "release/$name" | Out-Null
+          Copy-Item target/release/winlldp.exe "release/$name.exe"
+          Copy-Item target/release/winlldp.exe, README.md, LICENSE, THIRD-PARTY-NOTICES.md, CHANGELOG.md "release/$name/"
+          Copy-Item env.example "release/$name/env.example"
+          Compress-Archive -Path "release/$name" -DestinationPath "release/$name.zip"
+          Remove-Item -Recurse "release/$name"
+          Copy-Item THIRD-PARTY-NOTICES.md release/
+          $sums = Get-ChildItem release -File | Sort-Object Name | ForEach-Object {
+            "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
+          }
+          $sums | Set-Content -Encoding ascii release/SHA256SUMS.txt
+          Get-Content release/SHA256SUMS.txt
 
       - uses: softprops/action-gh-release@v3
         with:
           name: WinLLDP ${{ github.ref_name }}
           body_path: release-notes.md
-          files: |
-            winlldp-${{ github.ref_name }}.exe
-            THIRD-PARTY-NOTICES.md
+          files: release/*

@@ -1,0 +1,26 @@
+@startuml send-sequence
+!include _style.iuml
+title Sending LLDP (winlldp send, and the service every interval)
+
+participant "winlldp.exe" as app
+participant "XDP installer\n(src/xdp.rs)" as inst
+participant "Windows\nnetcfg · driver store" as win
+participant "xdp.sys\n\\Device\\xdpapi\\xsk" as xdp
+participant "Network\nadapter" as nic
+
+app -> inst : ensure XDP is available
+alt XDP does not respond yet (first use)
+  inst -> inst : extract the embedded package to\n%ProgramFiles%\\WinLLDP\\xdp-<version>
+  inst -> win : netcfg -l xdp.inf -c s -i ms_xdp
+  win --> inst : driver installed and started (~1 s)
+end
+loop each active interface
+  app -> app : build the LLDPDU\n(chassis, port, TTL, names, Windows build,\nLLDP-MED, capabilities, management IP)
+  app -> app : pick the transmit adapter\n(the physical NIC behind a Hyper-V vEthernet)
+  app -> xdp : NtCreateFile (XdpOpenPacket000, API v3)
+  app -> xdp : UMEM + TX rings, BIND (ifIndex, TX, generic), ACTIVATE
+  app -> xdp : TX descriptor + NOTIFY (poke, wait)
+  xdp -> nic : Ethernet frame to 01:80:c2:00:00:0e
+  xdp --> app : TX completion
+end
+@enduml

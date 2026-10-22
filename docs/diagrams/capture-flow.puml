@@ -1,0 +1,26 @@
+@startuml capture-flow
+!include _style.iuml
+title Capturing LLDP (capture start, and the service)
+
+start
+:Enumerate active interfaces\n(name, adapter description, MAC);
+:Packet Monitor: enumerate data sources\n(network interfaces, hidden IDs included);
+:Map component IDs to interfaces\nby friendly name, description or MAC\n(a Hyper-V physical NIC maps to its vEthernet);
+:Live session on those data sources\nfilter EtherType 0x88CC, frames up to 9000 bytes;
+:Write capture.pid (capture start returns);
+repeat
+  :Packet Monitor callback:\ncopy the frame, look up its component;
+  if (component is a WinLLDP interface?) then (yes)
+    :Queue (interface, frame);
+    if (same frame on the same interface\nin the last second?) then (no)
+      :Decode the LLDPDU TLVs;
+      :Update neighbors.json\n(key interface:source-MAC:chassis-ID,\nkeeps first_seen, refreshes last_seen);
+    else (yes)
+      :Drop the duplicate report;
+    endif
+  else (no)
+    :Ignore (switch ports, VM ports);
+  endif
+repeat while (capture running?) is (yes)
+stop
+@enduml

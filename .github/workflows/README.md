@@ -3,7 +3,7 @@
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
 | `ci.yml` | push to `master`, pull requests | `cargo fmt --check`, `clippy -D warnings`, release build of `winlldp.exe`, all tests (unit and the integration tests that run the executable), uploads the exe as an artifact |
-| `release.yml` | push of a `v*` tag | checks the tag matches `Cargo.toml`, lints, builds and tests like CI, takes the release notes from `CHANGELOG.md` and publishes `winlldp-vX.Y.Z.exe` as a GitHub release |
+| `release.yml` | push of a `v*` tag | checks the tag matches `Cargo.toml`, lints, builds and tests like CI, takes the release notes from `CHANGELOG.md` and publishes `winlldp-vX.Y.Z-windows-x64.exe`, `winlldp-vX.Y.Z-windows-x64.zip` (exe, README, LICENSE, notices, changelog, `env.example`), `THIRD-PARTY-NOTICES.md` and `SHA256SUMS.txt` |
 
 The runners are Windows Server 2025 with administrator rights: the tests install the bundled XDP driver, capture with Packet Monitor and run the service with the bundled NSSM; a second step runs the lifecycle tests one at a time.
 

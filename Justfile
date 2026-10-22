@@ -30,6 +30,11 @@ test:
     cargo test --target {{target}}
     cargo test --target {{target}} --test cli -- --ignored --test-threads=1
 
+# render docs/diagrams/*.puml to SVG with the PlantUML API server (PLANTUML_API_BASE)
+[unix]
+diagrams:
+    scripts/render-diagrams.sh
+
 # preview the next release (version + changelog) from the commit messages
 bump-dry-run:
     uvx --from commitizen cz bump --dry-run

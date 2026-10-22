@@ -1,0 +1,36 @@
+@startuml architecture
+!include _style.iuml
+title WinLLDP — components
+
+actor "Administrator" as admin
+
+node "Windows host" {
+  component "**winlldp.exe**\nCLI" as cli
+  package "Windows service WinLLDP" {
+    component "NSSM\n//bundled//" as nssm
+    component "**service-run**\nsender loop\n(every LLDP_INTERVAL)" as svc
+  }
+  component "**capture-subprocess**\nLLDP receiver" as cap
+  database "neighbors.json" as nj
+  component "XDP for Windows\nxdp.sys · //bundled, Microsoft-signed//" as xdp
+  component "Packet Monitor\nPktMon.sys · //part of Windows//" as pkt
+  component "Network adapters" as nic
+}
+
+cloud "LAN\nswitches · routers · servers · APs" as lan
+
+admin --> cli : send · capture · show-neighbors\nservice · driver
+cli --> nssm : service install / start / stop
+nssm --> svc : runs
+svc --> cap : starts
+cli --> cap : capture start / stop
+svc --> xdp : AF_XDP transmit
+cli --> xdp : send
+xdp --> nic
+nic --> lan : LLDPDU to 01:80:c2:00:00:0e
+lan --> nic : neighbors' LLDPDUs
+nic --> pkt
+pkt --> cap : real-time stream\n(EtherType 0x88CC)
+cap --> nj : add / refresh neighbors
+cli --> nj : show-neighbors · clear-neighbors
+@enduml

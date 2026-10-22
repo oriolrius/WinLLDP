@@ -1,0 +1,20 @@
+@startuml component-lifecycle
+!include _style.iuml
+title Bundled components: installed when needed, removed with the service
+
+state "Nothing installed" as none
+state "XDP installed\n(driver store, %ProgramFiles%\\WinLLDP\\xdp-<version>)" as xdp
+state "Service installed\n(NSSM in %ProgramFiles%\\WinLLDP\\nssm-<version>)" as svc
+state "Service running" as run
+
+[*] --> none
+none --> xdp : first send\n(winlldp send, or the service)
+none --> svc : service install
+xdp --> svc : service install
+svc --> run : service start
+run --> svc : service stop
+run --> run : sends LLDP every interval\n(installs XDP if missing)
+svc --> none : service uninstall\nremoves NSSM and the XDP WinLLDP installed
+run --> none : service uninstall\n(stops it first)
+xdp --> none : driver uninstall
+@enduml

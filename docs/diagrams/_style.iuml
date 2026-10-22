@@ -1,0 +1,53 @@
+' Shared look for WinLLDP diagrams (included by each diagram)
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 13
+skinparam ArrowColor #3C4A5C
+skinparam ArrowFontColor #3C4A5C
+skinparam ArrowFontSize 11
+skinparam TitleFontSize 18
+skinparam TitleFontStyle bold
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #E0C068
+skinparam component {
+  BackgroundColor #EAF2FB
+  BorderColor #2F6DB5
+  FontColor #102A43
+}
+skinparam node {
+  BackgroundColor #F7F9FC
+  BorderColor #8193A8
+}
+skinparam database {
+  BackgroundColor #EEF7EE
+  BorderColor #3E8E41
+}
+skinparam cloud {
+  BackgroundColor #F3F0FA
+  BorderColor #7A5CB8
+}
+skinparam package {
+  BackgroundColor #FFFFFF
+  BorderColor #8193A8
+}
+skinparam sequence {
+  ParticipantBackgroundColor #EAF2FB
+  ParticipantBorderColor #2F6DB5
+  LifeLineBorderColor #8193A8
+  GroupBackgroundColor #F7F9FC
+}
+skinparam activity {
+  BackgroundColor #EAF2FB
+  BorderColor #2F6DB5
+  DiamondBackgroundColor #FFF8E1
+  DiamondBorderColor #E0C068
+}
+skinparam state {
+  BackgroundColor #EAF2FB
+  BorderColor #2F6DB5
+  FontColor #102A43
+  StartColor #2F6DB5
+  EndColor #2F6DB5
+}

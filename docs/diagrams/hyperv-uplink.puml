@@ -1,0 +1,27 @@
+@startuml hyperv-uplink
+!include _style.iuml
+title Hyper-V hosts: LLDP leaves through the physical NIC
+
+node "Windows host with Hyper-V" {
+  component "WinLLDP" as w
+  component "vEthernet (LAN)\nhost vNIC · IP · MAC aa:bb:..." as veth
+  component "Hyper-V external switch" as vsw
+  component "VM ports" as vm
+  component "Ethernet\nphysical NIC · same MAC aa:bb:...\nno IP stack" as phy
+}
+node "Network switch" as sw
+
+w --> phy : **sends** LLDP here\n(same MAC as the vEthernet)
+phy --> sw : LLDPDU
+w ..> veth : not here
+veth --> vsw
+vsw --> vm
+vsw -[#B03A2E,dashed]-x phy : <color:#B03A2E>LLDP not forwarded\n<color:#B03A2E>to the uplink</color>
+sw --> phy : neighbors' LLDPDUs
+phy ..> w : captured, reported\nunder vEthernet (LAN)
+
+note bottom of vsw
+  Like any 802.1D bridge, the virtual switch does not forward
+  the reserved address 01:80:c2:00:00:0e to its uplink.
+end note
+@enduml

@@ -1,347 +1,328 @@
-# WinLLDP - Windows LLDP Service
+<div align="center">
 
-A Windows implementation of LLDP (Link Layer Discovery Protocol) that helps discover network devices and their capabilities. WinLLDP allows Windows machines to participate in network topology discovery by sending and receiving LLDP packets.
+# WinLLDP
 
-> **v2 is written in Rust**: a single ~2 MB `winlldp.exe` with nothing else to install, and the same commands, options, configuration and files as v1. The Python v1.x line is still maintained for security and bug fixes. See [What changed in v2](#what-changed-in-v2).
+**LLDP for Windows — announce your machines to the network and discover what they are plugged into.**
 
-## What is LLDP?
+[![CI](https://github.com/oriolrius/WinLLDP/actions/workflows/ci.yml/badge.svg)](https://github.com/oriolrius/WinLLDP/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/oriolrius/WinLLDP?sort=semver)](https://github.com/oriolrius/WinLLDP/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Windows%20x64-0078D6?logo=windows)](#requirements)
+[![Rust](https://img.shields.io/badge/rust-1.99-B7410E?logo=rust)](rust-toolchain.toml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-LLDP is a vendor-neutral protocol used by network devices to advertise their identity, capabilities, and neighbors. It's commonly used in enterprise networks for:
-- Network topology mapping
-- Troubleshooting connectivity
-- Automated network documentation
-- Switch port identification
+</div>
 
-## Quick Start for Users
+WinLLDP is a single, self-contained executable that implements the **Link Layer Discovery
+Protocol** (IEEE 802.1AB) on Windows. It advertises the host — name, Windows version and build,
+management address, LLDP-MED inventory — to switches and network management systems, and records
+the LLDP neighbors it hears on every interface. It runs from the command line or as a Windows
+service, and needs nothing else installed: the components it relies on are embedded and set up
+automatically.
 
-### Download and Install
+## Contents
 
-1. **Download the latest release** from [GitHub Releases](https://github.com/oriolrius/WinLLDP/releases/latest)
-   - Download `winlldp-vX.Y.Z.exe` (for 64-bit Windows)
-   - No installation needed - it's a standalone executable
+- [Features](#features)
+- [Requirements](#requirements)
+- [Quick start](#quick-start)
+- [Running as a Windows service](#running-as-a-windows-service)
+- [Command reference](#command-reference)
+- [Configuration](#configuration)
+- [What WinLLDP advertises](#what-winlldp-advertises)
+- [Discovered neighbors](#discovered-neighbors)
+- [How it works](#how-it-works)
+- [Files and locations](#files-and-locations)
+- [Security](#security)
+- [Troubleshooting](#troubleshooting)
+- [Building from source](#building-from-source)
+- [Third-party components and license](#third-party-components-and-license)
 
-2. **Place the executable** in a folder of your choice (e.g., `C:\Tools\WinLLDP\`)
+## Features
 
-3. **Open PowerShell as Administrator** (required for network access)
+- **Announces the host** on every active interface: chassis and port (MAC), system name, the exact
+  Windows version and build, port description, management IPv4/IPv6 address and ifIndex, system
+  capabilities and LLDP-MED inventory (hardware, firmware and software revision, model name).
+- **Discovers neighbors** — switches, routers, access points, servers, hypervisors — and keeps them
+  in `neighbors.json`, with a live table view (`show-neighbors --watch`).
+- **Nothing to install.** Sending uses Microsoft's [XDP for Windows](https://github.com/microsoft/xdp-for-windows)
+  driver and the service runs under [NSSM](https://nssm.cc/); both are embedded in `winlldp.exe`,
+  installed on first use and removed with the service. Capturing uses Windows' built-in Packet
+  Monitor.
+- **Hyper-V aware.** On hosts whose `vEthernet` adapters sit on an external virtual switch, LLDP
+  is sent on the physical adapter behind the switch, so it actually reaches the network, and
+  neighbors are still reported under the `vEthernet` name.
+- **Windows service** with automatic start and clean stop, managed with `winlldp service`.
+- **Small and fast**: one ~2 MB native executable (Rust), no runtime, starts instantly.
+- **Scriptable**: plain-text output, `.env` or environment configuration, exit code `1` on failure.
 
-### Basic Usage
+## Requirements
 
-#### See what devices are on your network:
+| | |
+|---|---|
+| Operating system | Windows 11 or Windows Server 2019 or later, x64 |
+| Discovering neighbors (`capture`) | Windows 11 24H2 or later, or Windows Server 2025 or later (Packet Monitor API) |
+| Privileges | Administrator (raw Ethernet frames, driver and service installation) |
+| Anything else | Nothing — see [Third-party components](#third-party-components-and-license) |
+
+## Quick start
+
+1. Download `winlldp-<version>-windows-x64.zip` (or the bare `.exe`) from the
+   [latest release](https://github.com/oriolrius/WinLLDP/releases/latest) and unpack it in a folder
+   such as `C:\Tools\WinLLDP\`. `SHA256SUMS.txt` lists the checksums of the release files.
+2. Open **PowerShell as Administrator** in that folder.
+3. Announce this machine and look at the network:
+
 ```powershell
-# Start discovering network devices
-.\winlldp.exe capture start
-
-# Wait 30-60 seconds for devices to be discovered
-
-# View discovered devices
-.\winlldp.exe show-neighbors
+.\winlldp.exe send -v                # announce this machine now (prints the packet it sends)
+.\winlldp.exe capture start          # start listening for neighbors in the background
+.\winlldp.exe show-neighbors --watch # live table, refreshed every 5 seconds (Ctrl+C to exit)
 ```
 
-#### Make your Windows machine discoverable:
-```powershell
-# Send LLDP announcement once
-.\winlldp.exe send
+The first `send` installs the network driver it needs; it takes about a second and happens once.
 
-# Or install as a service to send continuously
-.\winlldp.exe service install
+## Running as a Windows service
+
+The service announces the machine every `LLDP_INTERVAL` seconds and keeps the neighbor table up
+to date, starting automatically with Windows.
+
+```powershell
+.\winlldp.exe service install    # register the "WinLLDP" service (automatic start)
 .\winlldp.exe service start
+.\winlldp.exe service status     # add -v for the full service configuration and log tail
 ```
 
-## Installation as a Service (Recommended)
+`service stop`, `service restart` and `service uninstall` complete the set; uninstalling also
+removes the components WinLLDP installed. Keep `winlldp.exe` where it is while the service exists:
+the service runs it from that folder, and its files live next to it.
 
-Running WinLLDP as a service ensures your Windows machine is always discoverable on the network.
+## Command reference
 
-### Prerequisites
+All commands accept `-h/--help`. Commands that read the configuration accept
+`-e/--env-file <path>`, and most accept `-v/--verbose` for debug output.
 
-**Administrator privileges** — nothing else: the service manager (NSSM) and the network driver
-WinLLDP uses are inside `winlldp.exe` and are set up automatically.
+| Command | Description |
+|---|---|
+| `send [-i <interface>] [-v]` | Send the LLDPDU now on every active interface, or on one (`-i`); `-v` prints the decoded packet and its bytes |
+| `capture start` | Start the background capture process (returns once it is capturing) |
+| `capture stop` | Stop it |
+| `capture status` | PID, uptime, memory and CPU of the capture process |
+| `capture log [-n <lines>]` | Show the capture log (last 20 lines; `-n 0` for all) |
+| `show-neighbors [-w]` | Table of discovered neighbors; `--watch` refreshes every 5 s |
+| `clear-neighbors` | Empty the neighbor table |
+| `show-interfaces` | Network interfaces with MAC address, state and IPv4 addresses |
+| `show-config` | Effective configuration |
+| `debug-paths` | Where the configuration and data files are, and whether they exist |
+| `service install` · `uninstall` · `start` · `stop` · `restart` · `status` | Manage the Windows service |
+| `driver status` · `install` · `uninstall` | Inspect or manage the bundled network driver (normally automatic) |
+| `version` | Show the version |
 
-### Install and Start Service
+Exit codes: `0` success, `1` failure (with a message on stderr), `2` invalid command line.
 
-```powershell
-# 1. Install the service
-.\winlldp.exe service install
+## Configuration
 
-# 2. Start the service
-.\winlldp.exe service start
+Settings come from environment variables, then from a `.env` file, then from the defaults. The
+`.env` file is the one given with `--env-file`, or the first `.env` found in the working directory
+or its parents; the service runs in the executable's folder, so put it next to `winlldp.exe`.
+The release includes an annotated [`env.example`](env.example).
 
-# 3. Verify it's running
-.\winlldp.exe service status
-```
+| Variable | Default | Description |
+|---|---|---|
+| `LLDP_INTERVAL` | `30` | Seconds between announcements (service). Minimum `5`. |
+| `LLDP_TTL` | `120` | Seconds neighbors should keep this host. At least `LLDP_INTERVAL`, at most `65535`; 3–4× the interval is typical. |
+| `LLDP_INTERFACE` | `all` | `all` active interfaces, or one interface name as shown by `show-interfaces`. |
+| `LLDP_SYSTEM_NAME` | `auto` | System Name TLV; `auto` uses the computer's host name. |
+| `LLDP_PORT_DESCRIPTION` | `Ethernet Port` | Port Description TLV; empty uses the interface name. |
+| `LLDP_MANAGEMENT_ADDRESS` | `auto` | IPv4 or IPv6 address to advertise; `auto` uses the interface's first IPv4 address, else the host's primary address. |
+| `LLDP_NEIGHBORS_FILE` | `neighbors.json` | Absolute path for the neighbor table; otherwise it is kept next to the executable. |
+| `LLDP_SYSTEM_DESCRIPTION` | — | Reserved: the System Description TLV always carries the Windows version and build. |
 
-The service will:
-- Start automatically with Windows
-- Send LLDP packets every 30 seconds
-- Continuously discover network neighbors
-- Store discoveries in `neighbors.json`
-
-### Verify It's Working
-
-```powershell
-# Check discovered devices
-.\winlldp.exe show-neighbors
-
-# Watch discoveries in real-time
-.\winlldp.exe show-neighbors --watch
-```
-
-You should see devices like:
-- Network switches with port information
-- Other servers running LLDP
-- IP phones
-- Wireless access points
-
-## Common Commands
-
-### Discovery Commands
-```powershell
-# Start network discovery
-.\winlldp.exe capture start
-
-# View discovered devices
-.\winlldp.exe show-neighbors
-
-# Watch discoveries live (updates every 5 seconds)
-.\winlldp.exe show-neighbors --watch
-
-# Stop discovery
-.\winlldp.exe capture stop
-```
-
-### Service Management
-```powershell
-# Install as Windows service
-.\winlldp.exe service install
-
-# Service control
-.\winlldp.exe service start
-.\winlldp.exe service stop
-.\winlldp.exe service restart
-.\winlldp.exe service status
-
-# Uninstall service
-.\winlldp.exe service uninstall
-```
-
-### Troubleshooting Commands
-```powershell
-# View your network interfaces
-.\winlldp.exe show-interfaces
-
-# Send LLDP packet with details
-.\winlldp.exe send -v
-
-# Check version
-.\winlldp.exe version
-
-# View configuration
-.\winlldp.exe show-config
-```
-
-## Configuration (Optional)
-
-WinLLDP can be customized using a `.env` file placed in the same directory as `winlldp.exe`. If no `.env` file is provided, WinLLDP uses sensible defaults.
-
-### Configuration Options
-
-#### LLDP_INTERVAL
-- **Description**: How often to send LLDP packets (in seconds)
-- **Default**: `30`
-- **Valid Range**: 5-3600 seconds
-- **Example**: `LLDP_INTERVAL=60` (send every minute)
-- **Notes**: Lower values increase network traffic but provide faster discovery. Most network devices use 30-60 seconds.
-
-#### LLDP_INTERFACE
-- **Description**: Which network interface(s) to use for LLDP
-- **Default**: `all` (uses all active network interfaces)
-- **Options**:
-  - `all` - Use all network interfaces
-  - `"Interface Name"` - Use specific interface (use quotes if name has spaces)
-- **Examples**:
-  ```env
-  LLDP_INTERFACE=all
-  LLDP_INTERFACE="Ethernet 2"
-  LLDP_INTERFACE="Wi-Fi"
-  ```
-- **Notes**: Use `winlldp.exe show-interfaces` to see available interface names
-
-#### LLDP_SYSTEM_NAME
-- **Description**: System name to advertise in LLDP packets
-- **Default**: `auto` (uses Windows hostname)
-- **Options**:
-  - `auto` - Automatically use computer's hostname
-  - `"Custom Name"` - Any custom string
-- **Examples**:
-  ```env
-  LLDP_SYSTEM_NAME=auto
-  LLDP_SYSTEM_NAME=WebServer01
-  LLDP_SYSTEM_NAME="Building 2 - Room 304"
-  ```
-
-#### LLDP_SYSTEM_DESCRIPTION
-- **Description**: System description in LLDP packets
-- **Default**: `Windows LLDP Service`
-- **Current Behavior**: ⚠️ **This setting is currently ignored**. WinLLDP always sends detailed Windows information including version, build number, and architecture (e.g., "Windows 10.0.26100 AMD64")
-- **Example**: `LLDP_SYSTEM_DESCRIPTION=Database Server` (currently has no effect)
-
-#### LLDP_PORT_DESCRIPTION
-- **Description**: Description of the network port
-- **Default**: `Ethernet Port`
-- **Examples**:
-  ```env
-  LLDP_PORT_DESCRIPTION=Uplink to Core Switch
-  LLDP_PORT_DESCRIPTION=Management Interface
-  ```
-
-#### LLDP_MANAGEMENT_ADDRESS
-- **Description**: IP address to advertise for management purposes
-- **Default**: `auto` (automatically detects primary IP)
-- **Options**:
-  - `auto` - Use the primary IP of the sending interface
-  - `x.x.x.x` - Specific IPv4 address
-- **Examples**:
-  ```env
-  LLDP_MANAGEMENT_ADDRESS=auto
-  LLDP_MANAGEMENT_ADDRESS=192.168.1.100
-  LLDP_MANAGEMENT_ADDRESS=10.0.0.50
-  ```
-- **Notes**: This helps network admins know which IP to use for managing the device
-
-#### LLDP_TTL
-- **Description**: Time To Live - how long (seconds) receivers should keep this device's information
-- **Default**: `120` (2 minutes)
-- **Valid Range**: Must be greater than LLDP_INTERVAL and less than 65536
-- **Recommended**: 3-4 times the LLDP_INTERVAL value
-- **Example**: `LLDP_TTL=180` (3 minutes)
-- **Notes**: After TTL expires, network devices will remove this system from their neighbor tables
-
-#### LLDP_NEIGHBORS_FILE
-- **Description**: Where to store discovered neighbor information
-- **Default**: `neighbors.json` (in the same directory as winlldp.exe)
-- **Options**:
-  - Relative path: `neighbors.json` (relative to exe location)
-  - Absolute path: `C:\ProgramData\WinLLDP\neighbors.json`
-- **Examples**:
-  ```env
-  LLDP_NEIGHBORS_FILE=neighbors.json
-  LLDP_NEIGHBORS_FILE=C:\Logs\lldp_neighbors.json
-  ```
-
-### Example Configuration Files
-
-#### Minimal Configuration (relies on defaults):
 ```env
-# Empty file - all defaults will be used
-```
-
-#### Basic Custom Configuration:
-```env
-# Send LLDP every minute
-LLDP_INTERVAL=60
-
-# Only use the main ethernet interface
-LLDP_INTERFACE="Ethernet"
-
-# Custom identity
+# .env next to winlldp.exe
+LLDP_INTERVAL=30
+LLDP_TTL=120
+LLDP_INTERFACE=all
 LLDP_SYSTEM_NAME=FileServer01
+LLDP_PORT_DESCRIPTION=Uplink to core switch
+LLDP_MANAGEMENT_ADDRESS=auto
 ```
 
-#### Advanced Configuration:
-```env
-# LLDP Settings
-LLDP_INTERVAL=45
-LLDP_INTERFACE="Ethernet 2"
-LLDP_SYSTEM_NAME=DC-Primary
-LLDP_PORT_DESCRIPTION=Trunk to Core-SW-01 Port Gi1/0/12
-LLDP_MANAGEMENT_ADDRESS=10.0.100.15
-LLDP_TTL=180
+Values may contain spaces without quotes; single and double quotes, `# comments`,
+`export KEY=value` and `${VARIABLE}` / `${VARIABLE:-default}` expansion are supported.
 
-# File Storage
-LLDP_NEIGHBORS_FILE=C:\ProgramData\WinLLDP\discovered_devices.json
-```
+## What WinLLDP advertises
 
-### Default Behavior (No .env File)
+One LLDPDU per interface, to the nearest-bridge address `01:80:c2:00:00:0e` (EtherType `0x88CC`):
 
-If you run WinLLDP without a `.env` file, these defaults are used:
+| TLV | Content | Example |
+|---|---|---|
+| Chassis ID | MAC address of the interface (subtype 4) | `50:eb:f6:2c:f2:ba` |
+| Port ID | MAC address of the interface (subtype 3) | `50:eb:f6:2c:f2:ba` |
+| Time To Live | `LLDP_TTL` | `120` |
+| Port Description | `LLDP_PORT_DESCRIPTION` | `Ethernet Port` |
+| System Name | Host name or `LLDP_SYSTEM_NAME` | `FILESERVER01` |
+| System Description | Windows version, build and architecture | `Windows 10.0.26100 AMD64` |
+| System Capabilities | Station only (supported and enabled) | `0x0080` |
+| Management Address | IPv4 or IPv6 address, with the interface's ifIndex | `10.2.0.47`, ifIndex 11 |
+| LLDP-MED Capabilities | Endpoint Class III | capabilities `0x0001`, class 3 |
+| LLDP-MED Hardware Revision | Processor architecture | `AMD64` |
+| LLDP-MED Firmware Revision | Windows version and build | `10.0.26100` |
+| LLDP-MED Software Revision | WinLLDP version | `WinLLDP 2.0.0` |
+| LLDP-MED Model Name | Windows edition | `Microsoft Windows 11 Pro` |
 
-| Setting | Default Value | Behavior |
-|---------|--------------|----------|
-| LLDP_INTERVAL | 30 | Sends LLDP every 30 seconds |
-| LLDP_INTERFACE | all | Uses all network interfaces |
-| LLDP_SYSTEM_NAME | auto | Uses computer hostname |
-| LLDP_SYSTEM_DESCRIPTION | (ignored) | Sends Windows version info |
-| LLDP_PORT_DESCRIPTION | Ethernet Port | Generic port description |
-| LLDP_MANAGEMENT_ADDRESS | auto | Uses primary IP address |
-| LLDP_TTL | 120 | Neighbors keep info for 2 minutes |
-| LLDP_NEIGHBORS_FILE | neighbors.json | Stores in exe directory |
+Switches show these as the neighbor's name, platform, version and management IP — for example
+MikroTik's `/ip neighbor`, Cisco's `show lldp neighbors detail` or a UniFi controller.
 
-## What You'll See
+## Discovered neighbors
 
-### Example Output
-```
+```text
+> .\winlldp.exe show-neighbors
 LLDP Neighbors:
-+-------------+-----------------+------------------+-----------------+---------+-------+----------------+
-| Interface   | Neighbor        | System Name      | Port            | Age     | TTL   | Management IP  |
-+=============+=================+==================+=================+=========+=======+================+
-| Ethernet 2  | 00:1b:21:XX:XX  | switch-floor-2   | GigabitEthernet | 2m 15s  | 120s  | 192.168.1.10   |
-|             |                 |                  | 1/0/24          |         |       |                |
-+-------------+-----------------+------------------+-----------------+---------+-------+----------------+
-| Ethernet 2  | 00:0c:29:XX:XX  | esxi-host-01     | vmnic2          | 5m 32s  | 120s  | 192.168.1.50   |
-+-------------+-----------------+------------------+-----------------+---------+-------+----------------+
++------------+-------------------+-------------+-----------------+--------+-------+-----------------+
+| Interface  | Neighbor          | System Name | Port            | Age    | TTL   | Management IP   |
++============+===================+=============+=================+========+=======+=================+
+| Ethernet   | d4:ca:6d:fa:a5:26 | core-sw01   | bridge/ether20  | 3m 12s | 120s  | 10.2.99.2       |
++------------+-------------------+-------------+-----------------+--------+-------+-----------------+
+| Ethernet   | 58:47:ca:79:73:a2 | pve01       | enp87s0         | 2m 40s | 120s  | 10.2.0.2        |
++------------+-------------------+-------------+-----------------+--------+-------+-----------------+
 
 Total neighbors: 2
 ```
 
-## What changed in v2
+Each neighbor is stored in `neighbors.json` under `interface:source-MAC:chassis-ID`:
 
-Same commands, options, `.env` settings, output and files (`neighbors.json`, `capture.pid`, `winlldp_capture.log`, `nssm_service.log`); v1 and v2 can read each other's `neighbors.json`. The differences:
+```json
+{
+  "Ethernet:d4:ca:6d:fa:a5:39:d4:ca:6d:fa:a5:26": {
+    "interface": "Ethernet",
+    "source_mac": "d4:ca:6d:fa:a5:39",
+    "data": {
+      "chassis_id": "d4:ca:6d:fa:a5:26",
+      "chassis_id_subtype": "MAC_ADDRESS",
+      "port_id": "bridge/ether20",
+      "port_id_subtype": "INTERFACE_NAME",
+      "ttl": 120,
+      "system_name": "core-sw01",
+      "system_description": "MikroTik RouterOS 6.49.7 (stable) CRS125-24G-1S-2HnD",
+      "management_addresses": ["10.2.99.2"],
+      "management_address": "10.2.99.2"
+    },
+    "first_seen": "2026-10-22T19:08:05.713838",
+    "last_seen": "2026-10-22T19:11:17.221904",
+    "ttl": 120
+  }
+}
+```
 
-- **Rust instead of Python**: one `winlldp.exe` (~2 MB) that starts instantly.
-- **Nothing to install**: v1 needed Npcap (which can't be redistributed, and whose free license covers 5 machines) and NSSM. v2 sends LLDP through Microsoft's [XDP for Windows](https://github.com/microsoft/xdp-for-windows) driver and runs the service with NSSM, both embedded in `winlldp.exe` and set up automatically the first time they are needed (about a second); uninstalling the service removes them. `winlldp driver status` shows them.
-- **Capture with Windows' own Packet Monitor** (Windows 11 24H2+ / Windows Server 2025+): no capture driver at all.
-- **Hyper-V hosts announce themselves for real**: on a `vEthernet` adapter of an external virtual switch, LLDP never left the computer (the switch doesn't forward it, whatever the tool). WinLLDP now sends it on the physical network adapter behind the switch, and still shows neighbors under the `vEthernet` name.
-- **Clear errors**: `capture start` and `send` fail with a message and a non-zero exit code when they cannot work (v1 could report success). Failures (capture start/stop, sending, configuration errors, service commands) exit with code 1.
-- **LLDP-MED Software Revision** is `WinLLDP <version>` (v1 sent the Python version), and **Model Name** (e.g. `Microsoft Windows 11 Pro`) is always sent: v1 read it with `wmic`, which recent Windows versions no longer include.
-- **Management Address TLV**: the interface number is the real ifIndex, and an IPv6 `LLDP_MANAGEMENT_ADDRESS` is sent as IPv6 (v1 labelled it IPv4).
-- **`debug-paths`** shows the real capture log location (next to the exe).
-- **All files next to the executable**: the application log `winlldp_service.log` moved there from `%TEMP%`.
-- Unknown TLV or subtype values in received packets no longer make the whole packet be dropped.
-- `capture stop`/`status` check that the PID in `capture.pid` is still a WinLLDP process, so a stale PID file never kills an unrelated program.
+`management_address` is the first IPv4 address the neighbor advertises (or its first address);
+all of them are in `management_addresses`.
+
+## How it works
+
+### Components
+
+`winlldp.exe` is the command-line tool, the service process (run by the bundled NSSM) and the
+capture process. Frames leave through XDP for Windows and are captured through Packet Monitor.
+
+![WinLLDP components](docs/diagrams/architecture.svg)
+
+### Sending
+
+On first use WinLLDP installs the embedded, Microsoft-signed XDP driver package. Each
+announcement builds the LLDPDU of the interface, chooses the adapter that puts it on the wire and
+transmits it through an AF_XDP socket (XDP API v3, generic mode).
+
+![Sending LLDP](docs/diagrams/send-sequence.svg)
+
+### Capturing
+
+The capture process opens a Packet Monitor session filtered on EtherType `0x88CC`, maps every
+reporting component to a WinLLDP interface, drops the duplicate reports of a frame that crosses
+several components, and updates `neighbors.json`.
+
+![Capturing LLDP](docs/diagrams/capture-flow.svg)
+
+### Hyper-V hosts
+
+A Hyper-V external virtual switch behaves like an 802.1D bridge and does not forward LLDP's
+reserved address to its uplink, so an LLDPDU sent on a `vEthernet` adapter never reaches the
+physical network. WinLLDP sends on the physical adapter that shares the `vEthernet` MAC address,
+and reports what it receives there under the `vEthernet` name.
+
+![Hyper-V uplink](docs/diagrams/hyperv-uplink.svg)
+
+### Bundled components
+
+![Component lifecycle](docs/diagrams/component-lifecycle.svg)
+
+Diagram sources are in [`docs/diagrams/`](docs/diagrams) (PlantUML; `just diagrams` renders them).
+Design decisions are recorded in [`docs/decisions/`](docs/decisions).
+
+## Files and locations
+
+| Location | File | Content |
+|---|---|---|
+| Next to `winlldp.exe` | `neighbors.json` | Discovered neighbors (unless `LLDP_NEIGHBORS_FILE` is absolute) |
+| | `capture.pid` | PID of the running capture process |
+| | `winlldp_capture.log` | Capture process log (`capture log`) |
+| | `nssm_service.log` | Service log |
+| | `winlldp_service.log` | Application log |
+| | `.env` | Optional configuration |
+| `%ProgramFiles%\WinLLDP\` | `xdp-<version>\` | XDP for Windows driver package (installed into Windows' driver store) |
+| | `nssm-<version>\nssm.exe` | Service host |
+| | `installed-by-winlldp` | Marks the driver as installed by WinLLDP |
+
+## Security
+
+- WinLLDP needs administrator rights to send and capture raw frames and to install its driver and
+  service. The service runs as LocalSystem.
+- The components the service runs as SYSTEM are written to `%ProgramFiles%\WinLLDP`, which only
+  administrators can modify. When running the service, keep `winlldp.exe` itself in a folder that
+  standard users cannot write to as well.
+- The XDP driver is signed by Microsoft (Windows Hardware Compatibility Publisher) and installed
+  unmodified; the embedded files are listed with their SHA-256 sums in [`vendor/`](vendor).
+  WinLLDP only removes a driver it installed itself.
+- `capture stop` only terminates the process recorded in `capture.pid` if it is still a WinLLDP
+  process.
+- Received LLDPDUs are parsed defensively: malformed or unknown TLVs never stop the capture.
 
 ## Troubleshooting
 
-### "Capturing LLDP needs the Windows Packet Monitor API"
-Capturing (discovering neighbors) uses Windows' built-in Packet Monitor, available on Windows 11 24H2 or later and Windows Server 2025 or later. On older Windows, sending (announcing this computer) still works.
+| Symptom | What to do |
+|---|---|
+| `Capturing LLDP needs the Windows Packet Monitor API` | Capturing needs Windows 11 24H2+ or Windows Server 2025+. Sending works on earlier versions. |
+| `Installing the XDP driver needs administrator rights` | Run WinLLDP once as administrator; the service always has the rights it needs. |
+| No neighbors appear | Check that the switch port has LLDP enabled (switches send every 30–60 s), that the interface is up (`show-interfaces`) and that the capture runs (`capture status`, `capture log`). |
+| The switch does not list this host | Run `send -v` and check the `Transmit adapter` and `Sent successfully` lines; on Hyper-V hosts the frame leaves through the physical adapter. |
+| The service does not start | `service status -v` shows its configuration and last log lines, `nssm_service.log` is next to the executable, and `driver status` shows the components. |
 
-### "Installing the XDP driver needs administrator rights"
-The first time WinLLDP sends LLDP it installs the network driver it uses. Run it once as administrator (the service always runs with the rights it needs).
+## Building from source
 
-### "Access Denied" Error
-- **Solution**: Run PowerShell as Administrator
-- Right-click PowerShell → "Run as administrator"
+Rust is pinned in [`rust-toolchain.toml`](rust-toolchain.toml) and the tasks are in the
+[`Justfile`](Justfile):
 
-### No Devices Discovered
-1. **Check Windows Firewall** - LLDP uses a special protocol (not TCP/UDP)
-2. **Verify network adapter** - Some virtual adapters don't support LLDP
-3. **Wait longer** - Some devices send LLDP every 30-60 seconds
-4. **Check switch configuration** - LLDP might be disabled on the switch port
+```bash
+just build      # release build → dist/winlldp.exe
+just lint       # cargo fmt --check, clippy -D warnings
+just test       # unit and integration tests, then the driver/service lifecycle tests
+just diagrams   # render docs/diagrams/*.puml with the PlantUML API server
+```
 
-### Service Won't Start
-1. **Check if running as admin**
-2. **Check the components**: `winlldp.exe driver status`
-3. **Check logs**: Look for `nssm_service.log` in the exe directory
+It builds natively on Windows (MSVC) or cross-compiles from WSL/Linux (`x86_64-pc-windows-gnu`,
+mingw-w64), where the tests run through WSL interop. The integration tests run the real
+executable and need administrator rights. The [development guide](docs/development.md) describes
+the code layout, and the [workflows](.github/workflows/README.md) CI and releases.
 
-## Requirements
+Releases follow [Conventional Commits](https://www.conventionalcommits.org/) and are cut with
+[commitizen](https://commitizen-tools.github.io/commitizen/): `uvx --from commitizen cz bump`
+updates the version and [`CHANGELOG.md`](CHANGELOG.md) and tags it; pushing the tag builds, tests
+and publishes the release.
 
-- **Windows 10/11 or Windows Server 2019+** (64-bit)
-- **Windows 11 24H2+ or Windows Server 2025+** to capture (discover neighbors)
-- **Administrator privileges**
-- Nothing else: see [Third-party components](THIRD-PARTY-NOTICES.md) for what `winlldp.exe` includes, and [ADR 0002](docs/decisions/0002-xdp-and-packet-monitor.md) for why
+## Third-party components and license
 
-## For Developers
+`winlldp.exe` embeds, unmodified:
 
-See [Development Guide](docs/development.md) for building from source.
+- [XDP for Windows](https://github.com/microsoft/xdp-for-windows) 1.4.0 — Microsoft, MIT license
+- [NSSM](https://nssm.cc/) 2.24-101-g897c7ad — public domain
 
-## License
+Details and license texts: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).
 
-MIT License - See [LICENSE](LICENSE) file for details.
+WinLLDP is released under the [MIT License](LICENSE).
