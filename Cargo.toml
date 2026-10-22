@@ -1,0 +1,40 @@
+[package]
+name = "winlldp"
+version = "1.0.1"
+edition = "2021"
+rust-version = "1.85"
+description = "LLDP service for Windows"
+readme = "README.md"
+repository = "https://github.com/oriolrius/WinLLDP"
+publish = false
+
+[[bin]]
+name = "winlldp"
+path = "src/main.rs"
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+clap = { version = "4.5", features = ["derive"] }
+ctrlc = "3.4"
+libloading = "0.8"
+serde_json = { version = "1", features = ["preserve_order"] }
+
+[target.'cfg(windows)'.dependencies.windows-sys]
+version = "0.59"
+features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_Networking_WinSock",
+    "Win32_System_Console",
+    "Win32_System_LibraryLoader",
+    "Win32_System_ProcessStatus",
+    "Win32_System_Registry",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+]
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
