@@ -58,8 +58,8 @@ pub fn grid(headers: &[&str], rows: &[Vec<String>]) -> String {
     };
 
     let mut out = vec![line('-'), row(headers), line('=')];
-    for r in 0..rows.len() {
-        let values: Vec<&str> = (0..columns).map(|c| cells[c][r].as_str()).collect();
+    for (r, _) in rows.iter().enumerate() {
+        let values: Vec<&str> = cells.iter().map(|col| col[r].as_str()).collect();
         out.push(row(&values));
         out.push(line('-'));
     }
