@@ -16,11 +16,11 @@ path = "src/main.rs"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 clap = { version = "4.5", features = ["derive"] }
 ctrlc = "3.4"
-libloading = "0.8"
+libloading = "0.9"
 serde_json = { version = "1", features = ["preserve_order"] }
 
 [target.'cfg(windows)'.dependencies.windows-sys]
-version = "0.59"
+version = "0.61"
 features = [
     "Wdk_Foundation",
     "Wdk_Storage_FileSystem",
