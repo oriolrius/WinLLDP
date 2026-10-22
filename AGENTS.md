@@ -4,7 +4,7 @@
 
 WinLLDP is a Python-based Windows implementation of the Link Layer Discovery Protocol (LLDP). It sends and receives LLDP packets to discover network neighbors and can run as a Windows service.
 
-**Project Version**: 0.1.0  
+**Project Version**: see `pyproject.toml` (managed by commitizen)  
 **Python Version**: >=3.11  
 **Platform**: Windows (uses pywin32, Windows-specific paths)
 
@@ -13,7 +13,7 @@ WinLLDP is a Python-based Windows implementation of the Link Layer Discovery Pro
 ```
 winlldp/
 ├── winlldp/                    # Main Python package
-│   ├── __init__.py            # Package init (version: "0.1.0")
+│   ├── __init__.py            # Package init (version read from pyproject.toml)
 │   ├── cli.py                 # CLI entry point using Click
 │   ├── config.py              # Configuration management
 │   ├── lldp_packet.py         # LLDP packet construction/parsing
@@ -147,11 +147,11 @@ winlldp service status
 - Use `-v` flag for verbose output
 - Check Windows Event Log for service issues
 
-#### Building for Distribution
-1. Update version in `pyproject.toml` and `__init__.py`
-2. Run `just pyinstaller` to create executable
-3. Test standalone executable from `dist/`
-4. Package with configuration examples
+#### Building and releasing
+1. Commit with Conventional Commit messages (`feat:`, `fix:`, `docs:`, ...): commitizen derives the version from them
+2. `just lint` and `just test` (builds `dist/winlldp.exe`, then runs all tests)
+3. `uv run cz bump` (version in `pyproject.toml` + `CHANGELOG.md`, commit, tag `vX.Y.Z`), then `git push --follow-tags`
+4. The tag runs `.github/workflows/release.yml`, which publishes the executable as a GitHub release
 
 ### Dependencies
 - **scapy**: Packet manipulation (>=2.5.0)

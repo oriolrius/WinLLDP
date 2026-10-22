@@ -1,78 +1,18 @@
-# GitHub Actions Workflows
+# GitHub Actions workflows
 
-This directory contains GitHub Actions workflows for building and releasing WinLLDP.
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `ci.yml` | push to `master`, pull requests | `uv sync --locked`, `ruff check`, builds `winlldp.exe` with PyInstaller, runs all tests (unit, path resolution and the frozen executable), uploads the exe as an artifact |
+| `release.yml` | push of a `v*` tag | checks the tag matches `pyproject.toml`, builds and tests like CI, takes the release notes from `CHANGELOG.md` and publishes `winlldp-vX.Y.Z.exe` as a GitHub release |
 
-## Workflows
+Dependabot (`../dependabot.yml`) opens weekly grouped updates for the uv lockfile (`build(deps): …`) and the actions (`ci: …`).
 
-### 0. Reminder
+## Releasing
 
-```bash
-# Commit the path fixes
-git add .github/workflows/*.yml
-git commit -m "fix: use forward slashes in GitHub release file paths"
-git push origin master
-
-# Delete and recreate the tag one more time
-git push --delete origin v0.9.9
-git tag -d v0.9.9
-git tag -a v0.9.9 -m "Release v0.9.9"
-git push origin v0.9.9
-```
-
-### 1. Build and Test (`build.yml`)
-
-- **Triggers**: On push to main/develop branches and pull requests
-- **Purpose**: Builds the executable and runs basic tests
-- **Artifacts**: Uploads development builds for testing
-
-### 2. Release (`release.yml`)
-
-- **Triggers**: When you push a tag starting with 'v' (e.g., `v0.9.0`)
-- **Purpose**: Automatically creates a GitHub release with the built executable
-- **Output**: Release with downloadable .exe file
-
-### 3. Manual Release (`manual-release.yml`)
-
-- **Triggers**: Manual workflow dispatch from GitHub Actions tab
-- **Purpose**: Create a release with custom version number
-- **Features**: 
-  - Verifies version matches pyproject.toml
-  - Option to mark as pre-release
-  - Creates git tag automatically
-
-## How to Create a Release
-
-### Method 1: Push a Tag (Automatic)
+Versions and `CHANGELOG.md` are managed with [commitizen](https://commitizen-tools.github.io/commitizen/) from the Conventional Commit messages (`feat:` → minor, `fix:` → patch, `feat!:`/`BREAKING CHANGE` → major):
 
 ```bash
-# Make sure version in pyproject.toml is updated
-git add pyproject.toml
-git commit -m "chore: bump version to 0.9.0"
-
-# Create and push tag
-git tag -a v0.9.0 -m "Release v0.9.0"
-git push origin v0.9.0
+uv run cz bump --dry-run     # preview the next version and changelog
+uv run cz bump               # bump pyproject.toml, update CHANGELOG.md, commit, tag vX.Y.Z
+git push --follow-tags       # the tag triggers release.yml
 ```
-
-### Method 2: Manual Release (GitHub UI)
-
-1. Go to Actions tab in GitHub
-2. Select "Manual Release" workflow
-3. Click "Run workflow"
-4. Enter version number (must match pyproject.toml)
-5. Check "pre-release" if applicable
-6. Click "Run workflow"
-
-## Release Naming Convention
-
-- Tags: `v0.9.0`, `v1.0.0`, etc.
-- Executable: `winlldp-v0.9.0.exe`
-- Pre-releases: Same format, marked as pre-release in GitHub
-
-## Notes
-
-- The workflows use `uv` for fast Python dependency management
-- PyInstaller is used to create standalone executables
-- Releases are automatically created with installation instructions
-- Development builds are retained for 7 days
-- Release artifacts are retained for 30 days as backup

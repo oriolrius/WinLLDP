@@ -88,8 +88,6 @@ winlldp/
 │   ├── test_paths.py          # Path resolution tests
 │   ├── test_frozen_executable.py  # Integration tests
 │   └── README.md              # Test documentation
-├── contrib/                   # Utility scripts
-│   └── release.ps1           # Release automation script
 ├── docs/                      # Documentation
 ├── dist/                      # Built executables (git ignored)
 ├── pyproject.toml            # Project configuration
@@ -197,10 +195,12 @@ Use conventional commits:
 
 ### Release Process
 
-1. **Update version** in `pyproject.toml`
-2. **Run tests**: `just test` or `python -m pytest`
-3. **Build executable**: `just pyinstaller`
-4. **Create release**: `.\contrib\release.ps1 -Type minor`
+Releases are managed with [commitizen](https://commitizen-tools.github.io/commitizen/), from the Conventional Commit messages:
+
+1. **Lint and test**: `just lint` and `just test` (builds the executable first, then runs every test)
+2. **Preview**: `uv run cz bump --dry-run`
+3. **Bump**: `uv run cz bump` updates the version in `pyproject.toml` and `CHANGELOG.md`, commits and tags `vX.Y.Z`
+4. **Publish**: `git push --follow-tags`; the tag runs `.github/workflows/release.yml`, which builds, tests and publishes `winlldp-vX.Y.Z.exe` with the changelog as release notes
 
 ## Advanced Configuration
 
