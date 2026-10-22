@@ -4,7 +4,7 @@
 
 WinLLDP is a Windows implementation of the Link Layer Discovery Protocol (LLDP). It sends and receives LLDP packets to discover network neighbors and can run as a Windows service (NSSM).
 
-**This line is v2, written in Rust.** It reimplements every v1 (Python) command with the same options, configuration, output and files. The Python v1.x line is still maintained for security and bug fixes on its own branch; keep both compatible (e.g. the `neighbors.json` format).
+**This line is v2, written in Rust.** It reimplements every v1 (Python) command with the same options, configuration, output and files. The Python v1.x line is still maintained for security and bug fixes on the `v1` branch; keep both compatible (e.g. the `neighbors.json` format).
 
 **Version**: `Cargo.toml` (managed by commitizen, `.cz.toml`)
 **Platform**: Windows only (x86_64); built with Rust stable

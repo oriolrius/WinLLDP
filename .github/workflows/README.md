@@ -2,17 +2,17 @@
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `ci.yml` | push to `master`/`v2`, pull requests | `cargo fmt --check`, `clippy -D warnings`, release build of `winlldp.exe`, all tests (unit and the integration tests that run the executable), uploads the exe as an artifact |
+| `ci.yml` | push to `master`, pull requests | `cargo fmt --check`, `clippy -D warnings`, release build of `winlldp.exe`, all tests (unit and the integration tests that run the executable), uploads the exe as an artifact |
 | `release.yml` | push of a `v*` tag | checks the tag matches `Cargo.toml`, lints, builds and tests like CI, takes the release notes from `CHANGELOG.md` and publishes `winlldp-vX.Y.Z.exe` as a GitHub release |
 
 GitHub's Windows runners have no Npcap and no NSSM, so the capture and service tests skip there; the Npcap-missing path is tested instead. Run `just test` on a Windows machine with Npcap, NSSM and administrator rights to run them all.
 
-Dependabot (`../dependabot.yml`) opens weekly grouped updates for the Cargo dependencies (`build(deps): …`) and the actions (`ci: …`).
+Dependabot (`../dependabot.yml`, read from the default branch) opens weekly grouped updates for the Cargo dependencies and actions on `master`, and for the uv lockfile and actions on `v1`.
 
 ## Two release lines
 
-- **v1.x** (Python) lives on the `v1` maintenance line and is released with `uv run cz bump`.
-- **v2.x** (Rust) is released from this line with commitizen too, reading the version from `Cargo.toml`:
+- **v1.x** (Python) lives on the `v1` branch (security and bug fixes) and is released from there with `uv run cz bump`.
+- **v2.x** (Rust) is released from `master` with commitizen too, reading the version from `Cargo.toml`:
 
 ```bash
 uvx --from commitizen cz bump --dry-run   # preview the next version and changelog

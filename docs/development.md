@@ -70,7 +70,8 @@ Windows Service (NSSM) → winlldp.exe service-run
 
 - **v2.x (Rust)**: this code. `uvx --from commitizen cz bump` bumps `Cargo.toml`/`Cargo.lock` and
   `CHANGELOG.md`, commits and tags `vX.Y.Z`; `git push --follow-tags` runs `release.yml`.
-- **v1.x (Python)**: the `v1` maintenance line (pyproject + uv + commitizen), for security and bug fixes.
+- **v1.x (Python)**: the `v1` branch (pyproject + uv + commitizen), for security and bug fixes. Fixes that affect
+  both lines go to both branches.
 
 Use Conventional Commits (`feat:`, `fix:`, `docs:`, ...): commitizen derives the version from them.
 

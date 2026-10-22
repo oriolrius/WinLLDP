@@ -19,3 +19,26 @@ updates:
     groups:
       github-actions:
         patterns: ["*"]
+
+  # v1 (Python) maintenance branch
+  - package-ecosystem: uv
+    directory: /
+    target-branch: v1
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "build(deps)"
+    groups:
+      python-deps:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: v1
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: "ci"
+    groups:
+      github-actions:
+        patterns: ["*"]
