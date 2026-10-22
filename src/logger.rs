@@ -1,4 +1,4 @@
-//! Logging: %TEMP%\winlldp_service.log plus the console (like v1's logging setup)
+//! Logging: winlldp_service.log next to the executable, plus the console
 
 use chrono::Local;
 use std::io::Write;
@@ -18,7 +18,7 @@ pub fn verbose() -> bool {
 }
 
 pub fn log_file() -> std::path::PathBuf {
-    std::env::temp_dir().join("winlldp_service.log")
+    crate::paths::app_log_file()
 }
 
 fn log(level: &str, message: &str) {

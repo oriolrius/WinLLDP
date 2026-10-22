@@ -311,6 +311,7 @@ Same commands, options, `.env` settings, output and files (`neighbors.json`, `ca
 - **LLDP-MED Software Revision** is `WinLLDP <version>` (v1 sent the Python version), and **Model Name** (e.g. `Microsoft Windows 11 Pro`) is always sent: v1 read it with `wmic`, which recent Windows versions no longer include.
 - **Management Address TLV**: the interface number is the real ifIndex, and an IPv6 `LLDP_MANAGEMENT_ADDRESS` is sent as IPv6 (v1 labelled it IPv4).
 - **`debug-paths`** shows the real capture log location (next to the exe).
+- **All files next to the executable**: the application log `winlldp_service.log` moved there from `%TEMP%`.
 - Unknown TLV or subtype values in received packets no longer make the whole packet be dropped.
 - `capture stop`/`status` check that the PID in `capture.pid` is still a WinLLDP process, so a stale PID file never kills an unrelated program.
 

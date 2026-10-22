@@ -43,7 +43,7 @@ src/
 ├── process.rs   # PID checks, uptime/memory/CPU for capture status
 ├── service.rs   # NSSM service commands and the service process (service-run)
 ├── table.rs     # tabulate-style grid tables
-├── logger.rs    # %TEMP%\winlldp_service.log + console
+├── logger.rs    # winlldp_service.log (next to the exe) + console
 └── fsdebug.rs   # verbose file-operation tracing
 tests/cli.rs     # integration tests against the real winlldp.exe
 ```

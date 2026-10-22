@@ -22,6 +22,11 @@ pub fn log_file() -> PathBuf {
     runtime_directory().join("winlldp_capture.log")
 }
 
+/// The application log (v1 wrote it to %TEMP%)
+pub fn app_log_file() -> PathBuf {
+    runtime_directory().join("winlldp_service.log")
+}
+
 pub fn service_log_file() -> PathBuf {
     runtime_directory().join("nssm_service.log")
 }
