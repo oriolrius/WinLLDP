@@ -13,11 +13,11 @@ jobs:
   release:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.11'
 
@@ -46,7 +46,7 @@ jobs:
       - name: Name the executable after the version
         run: Move-Item dist\winlldp.exe "dist\winlldp-${{ github.ref_name }}.exe"
 
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           name: WinLLDP ${{ github.ref_name }}
           body_path: release-notes.md
