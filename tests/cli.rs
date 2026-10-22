@@ -517,15 +517,18 @@ fn service_lifecycle() {
         let r = s.run(&["service", "start", "-v"]);
         assert_eq!(r.code, 0, "{r:?}");
         assert!(r.stdout.contains("Service started successfully"));
-        assert!(
-            wait_for(Duration::from_secs(15), || s.path("capture.pid").exists()),
-            "the service did not start the capture"
-        );
-        assert!(wait_for(Duration::from_secs(10), || std::fs::read_to_string(s.path("nssm_service.log"))
+        assert!(wait_for(Duration::from_secs(15), || std::fs::read_to_string(s.path("nssm_service.log"))
             .is_ok_and(|l| l.contains("Service started successfully"))));
+        let log = std::fs::read_to_string(s.path("nssm_service.log")).unwrap();
+        if npcap_installed() {
+            assert!(log.contains("Capture started successfully"), "{log}");
+            assert!(s.run(&["capture", "status"]).stdout.contains("RUNNING"));
+        } else {
+            // Without Npcap the service keeps running and says why there is no capture
+            assert!(log.contains("WARNING: Failed to start capture subprocess: Npcap is not installed"), "{log}");
+        }
         let r = s.run(&["service", "status", "-v"]);
         assert!(r.stdout.contains("SERVICE_RUNNING") && r.stdout.contains("The service is running"), "{r:?}");
-        assert!(s.run(&["capture", "status"]).stdout.contains("RUNNING"));
 
         let r = s.run(&["service", "start"]);
         assert!(r.stdout.contains("already running") || r.code == 0, "{r:?}");
