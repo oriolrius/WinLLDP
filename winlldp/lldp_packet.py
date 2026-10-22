@@ -1,3 +1,4 @@
+import ipaddress
 import struct
 from typing import List, Tuple, Optional, Dict, Any
 from enum import IntEnum
@@ -183,12 +184,41 @@ class LLDPPacket:
                 result['enabled_capabilities'] = enabled
                 
             elif tlv.type == TLVType.MANAGEMENT_ADDRESS:
-                addr_len = struct.unpack('!B', tlv.value[0:1])[0]
-                addr_type = struct.unpack('!B', tlv.value[1:2])[0]
-                address = tlv.value[2:1 + addr_len]
-                if addr_type == 1:  # IPv4
-                    result['management_address'] = '.'.join(str(b) for b in address)
-                else:
-                    result['management_address'] = ':'.join(f'{b:02x}' for b in address)
-        
+                address = format_management_address(tlv.value)
+                if address:
+                    result.setdefault('management_addresses', []).append(address)
+
+        # A neighbor may advertise several management addresses (e.g. IPv4 and IPv6):
+        # management_address is the first IPv4 one, or the first one if there is no IPv4
+        addresses = result.get('management_addresses')
+        if addresses:
+            ipv4 = [a for a in addresses if is_ipv4(a)]
+            result['management_address'] = (ipv4 or addresses)[0]
+
         return result
+
+
+# IANA address family numbers used in the Management Address TLV
+ADDRESS_FAMILY_IPV4 = 1
+ADDRESS_FAMILY_IPV6 = 2
+
+
+def format_management_address(value: bytes) -> Optional[str]:
+    """Format the address of a Management Address TLV value (IPv4/IPv6 in standard notation)"""
+    if len(value) < 2:
+        return None
+    addr_len = value[0]  # address subtype + address
+    addr_type = value[1]
+    address = value[2:1 + addr_len]
+    if addr_type == ADDRESS_FAMILY_IPV4 and len(address) == 4:
+        return str(ipaddress.IPv4Address(address))
+    if addr_type == ADDRESS_FAMILY_IPV6 and len(address) == 16:
+        return str(ipaddress.IPv6Address(address))
+    return ':'.join(f'{b:02x}' for b in address) or None
+
+
+def is_ipv4(address: str) -> bool:
+    try:
+        return isinstance(ipaddress.ip_address(address), ipaddress.IPv4Address)
+    except ValueError:
+        return False
