@@ -1,5 +1,8 @@
 # ADR 0001: Npcap in v2 — no bundling, native capture with Packet Monitor
 
+> **Superseded by [ADR 0002](0002-xdp-and-packet-monitor.md)** (2026-10-22): WinLLDP no longer uses Npcap.
+> This record keeps the research and tests that led there.
+
 - **Status**: accepted (2026-10-22); task 2 implemented (see [Implementation](#implementation))
 - **Scope**: v2 (Rust, `master`). v1 keeps depending on Npcap through scapy.
 

@@ -2,7 +2,7 @@
 
 A Windows implementation of LLDP (Link Layer Discovery Protocol) that helps discover network devices and their capabilities. WinLLDP allows Windows machines to participate in network topology discovery by sending and receiving LLDP packets.
 
-> **v2 is written in Rust**: a single ~1 MB `winlldp.exe` with no runtime to unpack, and the same commands, options, configuration and files as v1. The Python v1.x line is still maintained for security and bug fixes. See [What changed in v2](#what-changed-in-v2).
+> **v2 is written in Rust**: a single ~2 MB `winlldp.exe` with nothing else to install, and the same commands, options, configuration and files as v1. The Python v1.x line is still maintained for security and bug fixes. See [What changed in v2](#what-changed-in-v2).
 
 ## What is LLDP?
 
@@ -53,11 +53,8 @@ Running WinLLDP as a service ensures your Windows machine is always discoverable
 
 ### Prerequisites
 
-1. **Administrator privileges** (required)
-2. **NSSM** - Install via PowerShell:
-   ```powershell
-   winget install NSSM
-   ```
+**Administrator privileges** — nothing else: the service manager (NSSM) and the network driver
+WinLLDP uses are inside `winlldp.exe` and are set up automatically.
 
 ### Install and Start Service
 
@@ -230,12 +227,6 @@ WinLLDP can be customized using a `.env` file placed in the same directory as `w
   LLDP_NEIGHBORS_FILE=C:\Logs\lldp_neighbors.json
   ```
 
-#### LLDP_CAPTURE_BACKEND
-- **Description**: How `capture` receives LLDP frames
-- **Default**: `auto` (Windows Packet Monitor when available, otherwise Npcap)
-- **Options**: `auto`, `pktmon` (Packet Monitor only: Windows 11 24H2+ / Windows Server 2025), `npcap` (Npcap only)
-- **Notes**: `winlldp.exe capture status` shows the backend in use
-
 ### Example Configuration Files
 
 #### Minimal Configuration (relies on defaults):
@@ -305,9 +296,11 @@ Total neighbors: 2
 
 Same commands, options, `.env` settings, output and files (`neighbors.json`, `capture.pid`, `winlldp_capture.log`, `nssm_service.log`); v1 and v2 can read each other's `neighbors.json`. The differences:
 
-- **Rust instead of Python**: `winlldp.exe` is ~1 MB (v1: ~16 MB) and starts instantly; Npcap is loaded at run time.
-- **Capture without Npcap on Windows 11 24H2+ / Windows Server 2025**: `capture` uses Windows' built-in Packet Monitor, so discovering neighbors needs no extra software there, and it also sees LLDP that reaches a Hyper-V host's `vEthernet` adapters through the virtual switch (Npcap only saw the host's own frames there). On older Windows it uses Npcap; `capture status` shows which (`LLDP_CAPTURE_BACKEND` forces one). Sending still needs Npcap.
-- **Clear errors**: `capture start` and `send` fail with a message and a non-zero exit code when Npcap is missing or the capture cannot start (v1 could report success). Failures (capture start/stop, sending, configuration errors, service commands) exit with code 1.
+- **Rust instead of Python**: one `winlldp.exe` (~2 MB) that starts instantly.
+- **Nothing to install**: v1 needed Npcap (which can't be redistributed, and whose free license covers 5 machines) and NSSM. v2 sends LLDP through Microsoft's [XDP for Windows](https://github.com/microsoft/xdp-for-windows) driver and runs the service with NSSM, both embedded in `winlldp.exe` and set up automatically the first time they are needed (about a second); uninstalling the service removes them. `winlldp driver status` shows them.
+- **Capture with Windows' own Packet Monitor** (Windows 11 24H2+ / Windows Server 2025+): no capture driver at all.
+- **Hyper-V hosts announce themselves for real**: on a `vEthernet` adapter of an external virtual switch, LLDP never left the computer (the switch doesn't forward it, whatever the tool). WinLLDP now sends it on the physical network adapter behind the switch, and still shows neighbors under the `vEthernet` name.
+- **Clear errors**: `capture start` and `send` fail with a message and a non-zero exit code when they cannot work (v1 could report success). Failures (capture start/stop, sending, configuration errors, service commands) exit with code 1.
 - **LLDP-MED Software Revision** is `WinLLDP <version>` (v1 sent the Python version), and **Model Name** (e.g. `Microsoft Windows 11 Pro`) is always sent: v1 read it with `wmic`, which recent Windows versions no longer include.
 - **Management Address TLV**: the interface number is the real ifIndex, and an IPv6 `LLDP_MANAGEMENT_ADDRESS` is sent as IPv6 (v1 labelled it IPv4).
 - **`debug-paths`** shows the real capture log location (next to the exe).
@@ -317,8 +310,11 @@ Same commands, options, `.env` settings, output and files (`neighbors.json`, `ca
 
 ## Troubleshooting
 
-### "Npcap is not installed"
-WinLLDP sends raw Ethernet frames through [Npcap](https://npcap.com/), and captures them through Windows' Packet Monitor (Windows 11 24H2+ / Windows Server 2025) or Npcap. Install Npcap (the default options are fine) and try again. The free Npcap license covers up to 5 systems; larger deployments need an Npcap license (see [ADR 0001](docs/decisions/0001-npcap.md)).
+### "Capturing LLDP needs the Windows Packet Monitor API"
+Capturing (discovering neighbors) uses Windows' built-in Packet Monitor, available on Windows 11 24H2 or later and Windows Server 2025 or later. On older Windows, sending (announcing this computer) still works.
+
+### "Installing the XDP driver needs administrator rights"
+The first time WinLLDP sends LLDP it installs the network driver it uses. Run it once as administrator (the service always runs with the rights it needs).
 
 ### "Access Denied" Error
 - **Solution**: Run PowerShell as Administrator
@@ -332,16 +328,15 @@ WinLLDP sends raw Ethernet frames through [Npcap](https://npcap.com/), and captu
 
 ### Service Won't Start
 1. **Check if running as admin**
-2. **Verify NSSM is installed**: `nssm version`
+2. **Check the components**: `winlldp.exe driver status`
 3. **Check logs**: Look for `nssm_service.log` in the exe directory
 
 ## Requirements
 
-- **Windows 10/11 or Windows Server 2016+** (64-bit)
-- **Administrator privileges** (for raw network access)
-- **[Npcap](https://npcap.com/)** to send LLDP (and to capture it on Windows older than 11 24H2 / Server 2025). Install it yourself: WinLLDP cannot bundle it, and its free license covers up to 5 systems; see [ADR 0001](docs/decisions/0001-npcap.md)
-- **NSSM** (for service installation)
-- **Network adapter** that supports promiscuous mode
+- **Windows 10/11 or Windows Server 2019+** (64-bit)
+- **Windows 11 24H2+ or Windows Server 2025+** to capture (discover neighbors)
+- **Administrator privileges**
+- Nothing else: see [Third-party components](THIRD-PARTY-NOTICES.md) for what `winlldp.exe` includes, and [ADR 0002](docs/decisions/0002-xdp-and-packet-monitor.md) for why
 
 ## For Developers
 
