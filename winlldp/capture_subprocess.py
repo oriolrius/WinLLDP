@@ -24,7 +24,7 @@ def main():
             with open(log_file, 'a') as f:
                 f.write(f"[{datetime.now().isoformat()}] {msg}\n")
                 f.flush()
-        except:
+        except Exception:
             pass
     
     def log_file_op(operation, filepath, mode=''):
@@ -75,7 +75,7 @@ def main():
                         with open(neighbors_file, 'r') as f:
                             neighbors = json.load(f)
                         log_file_op("CLOSE", neighbors_file)
-                    except:
+                    except Exception:
                         neighbors = {}
                         log("No existing neighbors file, creating new one")
                     
@@ -141,7 +141,7 @@ def main():
             log_file_op("REMOVE", pid_file)
             os.remove(pid_file)
             log("PID file removed")
-        except:
+        except Exception:
             pass
         log("Capture process exiting")
 

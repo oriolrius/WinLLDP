@@ -69,7 +69,7 @@ def capture_start(env_file, verbose):
     receiver = LLDPReceiver(config)
     
     if verbose:
-        click.echo(f"Configuration loaded:")
+        click.echo("Configuration loaded:")
         click.echo(f"  Neighbors file: {config.neighbors_file}")
         click.echo(f"  Capture interval: {config.interval}s")
         click.echo(f"  TTL: {config.ttl}s")
@@ -159,7 +159,7 @@ def show_neighbors(env_file, watch, verbose):
     """Show discovered LLDP neighbors"""
     setup_logging(verbose)
     import json
-    from datetime import datetime, timedelta
+    from datetime import datetime
     
     config = Config(env_file)
     neighbors_file = config.neighbors_file
@@ -266,7 +266,7 @@ def send(env_file, interface, verbose):
     sender = LLDPSender(config)
     
     if verbose:
-        click.echo(f"Configuration:")
+        click.echo("Configuration:")
         click.echo(f"  Interface: {config.interface}")
         click.echo(f"  System Name: {config.system_name}")
         click.echo(f"  TTL: {config.ttl}")
@@ -536,9 +536,9 @@ def service_install(verbose):
     click.echo("Service installed successfully!")
     click.echo(f"  Executable: {python_exe}")
     if getattr(sys, 'frozen', False):
-        click.echo(f"  Command: service-run")
+        click.echo("  Command: service-run")
     else:
-        click.echo(f"  Module: winlldp.service_wrapper")
+        click.echo("  Module: winlldp.service_wrapper")
     click.echo(f"  Working directory: {project_dir}")
     click.echo("")
     click.echo("To start the service, run: winlldp service start")
@@ -858,7 +858,7 @@ def service_status(verbose):
                             click.echo("  Last 5 log entries:")
                             for line in lines[-5:]:
                                 click.echo(f"    {line.rstrip()}")
-                    except:
+                    except Exception:
                         pass
                 elif verbose:
                     click.echo(f"\n  Service log file not found: {log_file}")

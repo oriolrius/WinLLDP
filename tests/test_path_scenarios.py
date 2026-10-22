@@ -144,7 +144,7 @@ class TestPathScenarios(unittest.TestCase):
         from winlldp.config import Config
         from winlldp.paths import get_runtime_directory
         
-        config = Config()
+        Config()
         runtime_dir = get_runtime_directory()
         
         # Should use project root, not temp

@@ -1,7 +1,6 @@
 """Run tests for the frozen executable"""
 import subprocess
 import sys
-import os
 from pathlib import Path
 
 

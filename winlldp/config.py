@@ -1,11 +1,9 @@
 import os
-import sys
-import tempfile
 from typing import Optional
 from dotenv import load_dotenv
 from .paths import get_runtime_directory, get_neighbors_file, get_pid_file, get_log_file
 try:
-    from .file_debug import debug_open as open
+    from .file_debug import debug_open as open  # noqa: F401  (optional open() wrapper for file debugging)
 except ImportError:
     pass  # Use built-in open if debug not available
 

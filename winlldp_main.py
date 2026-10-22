@@ -5,17 +5,8 @@ Bootstrap script for PyInstaller to ensure all dependencies are loaded
 
 # Import all dependencies explicitly to help PyInstaller find them
 import sys
-import os
 
 # Standard library imports - only what's actually needed
-import json
-import logging
-import time
-import subprocess
-import threading
-import socket
-import struct
-import platform
 
 # Third-party imports - these need to be imported before our modules
 try:
@@ -69,7 +60,7 @@ try:
     # Only import what's actually used by the service functionality
     import win32serviceutil
     import servicemanager
-except ImportError as e:
+except ImportError:
     # Not fatal as not all commands need Windows service support
     pass
 

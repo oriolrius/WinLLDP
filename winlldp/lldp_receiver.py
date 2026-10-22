@@ -4,10 +4,8 @@ import subprocess
 import sys
 import threading
 import os
-import tempfile
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-from .lldp_packet import LLDPPacket
 from .system_info import SystemInfo
 from .config import Config
 from .logger import get_logger
@@ -149,11 +147,11 @@ class LLDPReceiver:
                 try:
                     import psutil
                     return psutil.pid_exists(pid)
-                except:
+                except Exception:
                     # Fallback method
                     os.kill(pid, 0)
                     return True
-        except:
+        except Exception:
             return False
         
         return False
@@ -206,7 +204,7 @@ class LLDPReceiver:
         if self.subprocess.poll() is not None:
             # Process already exited, show error
             stderr = self.subprocess.stderr.read()
-            self.logger.error(f"Capture process exited immediately")
+            self.logger.error("Capture process exited immediately")
             if stderr:
                 self.logger.error(f"Error output: {stderr}")
             return False
@@ -229,7 +227,7 @@ class LLDPReceiver:
                 # Clean up files
                 try:
                     os.remove(self._pid_file)
-                except:
+                except Exception:
                     pass
                 
                 self.logger.info(f"Stopped LLDP capture subprocess (PID: {pid})")
@@ -263,7 +261,7 @@ class LLDPReceiver:
                         'memory_mb': process.memory_info().rss / 1024 / 1024,
                         'cpu_percent': process.cpu_percent(interval=0.1)
                     }
-                except:
+                except Exception:
                     return {
                         'running': True,
                         'pid': pid,
@@ -271,7 +269,7 @@ class LLDPReceiver:
                         'memory_mb': 0,
                         'cpu_percent': 0
                     }
-            except:
+            except Exception:
                 pass
         
         return {
@@ -341,5 +339,5 @@ class LLDPReceiver:
         try:
             if os.path.exists(self._neighbors_file):
                 os.remove(self._neighbors_file)
-        except:
+        except Exception:
             pass

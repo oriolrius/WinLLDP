@@ -1,7 +1,6 @@
 # File operations debug wrapper for WinLLDP
 # Logs all file operations with caller information
 import os
-import sys
 import inspect
 from contextlib import contextmanager
 try:
@@ -29,7 +28,7 @@ def get_caller_info():
             line_no = caller_frame.f_lineno
             return f"{filename}:{function}:{line_no}"
         return "unknown"
-    except:
+    except Exception:
         return "unknown"
     finally:
         del frame
@@ -79,6 +78,6 @@ def debug_open(filename, mode='r', *args, **kwargs):
             logger.debug(f"FILE_CLOSE: '{abs_path}'")
         try:
             file_obj.close()
-        except:
+        except Exception:
             pass
 

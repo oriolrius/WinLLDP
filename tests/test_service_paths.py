@@ -105,7 +105,7 @@ class TestServicePaths(unittest.TestCase):
         receiver = LLDPReceiver(config)
         
         # Check if capture is running
-        is_running = receiver.is_capture_running()
+        receiver.is_capture_running()
         
         # Should check config.pid_file location
         mock_file.assert_called_with(config.pid_file, 'r')
@@ -116,9 +116,6 @@ class TestPathMigration(unittest.TestCase):
     
     def test_old_temp_files_ignored(self):
         """Test that old files in temp directory are ignored"""
-        # Create mock temp files
-        temp_neighbors = os.path.join(tempfile.gettempdir(), 'neighbors.json')
-        
         from winlldp.config import Config
         config = Config()
         

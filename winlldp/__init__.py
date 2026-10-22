@@ -32,7 +32,7 @@ def get_version():
                 with open(toml_path, 'rb') as f:
                     data = tomllib.load(f)
                 return data['project']['version']
-        except:
+        except Exception:
             pass
         return "unknown"
 

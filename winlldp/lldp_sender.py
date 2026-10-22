@@ -1,15 +1,12 @@
 import time
 import threading
-import socket
 import struct
 import platform
-from typing import List, Optional
 from scapy.all import sendp, Ether
 from .lldp_packet import (
     LLDPPacket, 
     ChassisIdSubtype, 
-    PortIdSubtype,
-    TLVType
+    PortIdSubtype
 )
 from .system_info import SystemInfo
 from .config import Config
@@ -89,7 +86,7 @@ class LLDPSender:
                             model = line.split('=', 1)[1].strip()
                             packet.add_organizationally_specific(lldp_med_oui, 9, model.encode('utf-8'))
                             break
-            except:
+            except Exception:
                 pass
             # System Capabilities (Version info)
             capabilities, enabled = self.system_info.get_system_capabilities()
@@ -129,7 +126,7 @@ class LLDPSender:
                     from .lldp_packet import LLDPPacket
                     decoded = LLDPPacket.decode(lldp_data)
                     packet_dict = decoded.to_dict()
-                    print(f"\n  Packet contents:")
+                    print("\n  Packet contents:")
                     print(f"    Chassis ID: {packet_dict.get('chassis_id', 'N/A')}")
                     print(f"    Port ID: {packet_dict.get('port_id', 'N/A')}")
                     print(f"    TTL: {packet_dict.get('ttl', 'N/A')}s")
@@ -151,7 +148,7 @@ class LLDPSender:
             frame = ether / lldp_data
             sendp(frame, iface=interface_info['name'], verbose=verbose)
             if verbose:
-                print(f"  Sent successfully!")
+                print("  Sent successfully!")
         except Exception as e:
             self.logger.error(f"Error sending LLDP on {interface_info['name']}: {e}")
 

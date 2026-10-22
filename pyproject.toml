@@ -34,3 +34,15 @@ tag_format = "v$version"
 update_changelog_on_bump = true
 changelog_incremental = true
 major_version_zero = false
+
+[tool.ruff]
+target-version = "py311"
+extend-exclude = ["build", "dist"]
+
+[tool.ruff.lint]
+# real errors only (ruff defaults); no style rules
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# PyInstaller entry point: imports the dependencies on purpose so they get bundled
+"winlldp_main.py" = ["F401"]

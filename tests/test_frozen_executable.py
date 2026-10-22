@@ -1,6 +1,5 @@
 """Integration tests for the frozen executable"""
 import os
-import sys
 import subprocess
 import tempfile
 import shutil
@@ -212,7 +211,6 @@ class TestFrozenExecutable(unittest.TestCase):
         time.sleep(2)
         
         # Check files exist in exe directory
-        neighbors_file = Path(self.test_dir) / "neighbors.json"
         pid_file = Path(self.test_dir) / "capture.pid"
         log_file = Path(self.test_dir) / "winlldp_capture.log"
         

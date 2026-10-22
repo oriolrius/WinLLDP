@@ -47,7 +47,7 @@ class ServiceLogger:
         try:
             import servicemanager
             servicemanager.LogInfoMsg(f"{self.name}: {message}")
-        except:
+        except Exception:
             pass
     
     def error(self, message):
@@ -57,7 +57,7 @@ class ServiceLogger:
         try:
             import servicemanager
             servicemanager.LogErrorMsg(f"{self.name}: {message}")
-        except:
+        except Exception:
             pass
     
     def debug(self, message):
