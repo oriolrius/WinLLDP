@@ -2,7 +2,7 @@
 
 All notable changes to WinLLDP are listed here. The file is maintained by [commitizen](https://commitizen-tools.github.io/commitizen/) from the Conventional Commit messages.
 
-## Unreleased
+## v1.0.1 (2026-10-22)
 
 ### Fix
 
