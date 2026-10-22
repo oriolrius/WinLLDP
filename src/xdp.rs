@@ -5,10 +5,11 @@
 //! removes it again when it uninstalls its service, if it was the one that installed it.
 
 use std::ffi::c_void;
+use std::mem::size_of;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
+use std::ptr::null_mut;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
-use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 pub const XDP_VERSION: &str = "1.4.0";
@@ -74,89 +75,246 @@ pub fn is_admin() -> bool {
 }
 
 // ---------------------------------------------------------------------------------------------
-// API (xdpapi.dll, function table of XDP_API_VERSION_2)
+// AF_XDP API version 3: talks to the driver directly, as the SDK's header-only implementation
+// (xdp/details/ioctldef.h, ioctlfn.h, afxdp.h) does; xdpapi.dll is not used
 
 type Handle = *mut c_void;
 
+const XDP_API_VERSION_3: u32 = 3;
+const XDP_OBJECT_TYPE_XSK: u32 = 1;
+/// Device for AF_XDP sockets; drivers before 1.4 only have `\Device\xdp`
+const XSK_DEVICE_NAMES: [&str; 2] = [r"\Device\xdpapi\xsk", r"\Device\xdp"];
+const OPEN_PACKET_NAME: &[u8] = b"XdpOpenPacket000\0";
+
+/// CTL_CODE(FILE_DEVICE_NETWORK, function, method, FILE_WRITE_ACCESS)
+const fn xsk_ioctl(function: u32, method: u32) -> u32 {
+    (0x12 << 16) | (2 << 14) | (function << 2) | method
+}
+const METHOD_BUFFERED: u32 = 0;
+const METHOD_NEITHER: u32 = 3;
+const IOCTL_XSK_BIND: u32 = xsk_ioctl(0, METHOD_BUFFERED);
+const IOCTL_XSK_ACTIVATE: u32 = xsk_ioctl(1, METHOD_BUFFERED);
+const IOCTL_XSK_GET_SOCKOPT: u32 = xsk_ioctl(2, METHOD_BUFFERED);
+const IOCTL_XSK_SET_SOCKOPT: u32 = xsk_ioctl(3, METHOD_BUFFERED);
+const IOCTL_XSK_NOTIFY: u32 = xsk_ioctl(4, METHOD_NEITHER);
+
 #[repr(C)]
-struct ApiTable {
-    xdp_open_api: *const c_void,
-    xdp_close_api: *const c_void,
-    xdp_get_routine: *const c_void,
-    xdp_create_program: *const c_void,
-    xdp_interface_open: *const c_void,
-    xsk_create: unsafe extern "system" fn(*mut Handle) -> i32,
-    xsk_bind: unsafe extern "system" fn(Handle, u32, u32, u32) -> i32,
-    xsk_activate: unsafe extern "system" fn(Handle, u32) -> i32,
-    xsk_notify_socket: unsafe extern "system" fn(Handle, u32, u32, *mut u32) -> i32,
-    xsk_notify_async: *const c_void,
-    xsk_get_notify_async_result: *const c_void,
-    xsk_set_sockopt: unsafe extern "system" fn(Handle, u32, *const c_void, u32) -> i32,
-    xsk_get_sockopt: unsafe extern "system" fn(Handle, u32, *mut c_void, *mut u32) -> i32,
-    xsk_ioctl: *const c_void,
+struct XskBindIn {
+    if_index: u32,
+    queue_id: u32,
+    flags: u32,
 }
 
-struct Api {
-    _lib: libloading::Library,
-    table: &'static ApiTable,
+#[repr(C)]
+struct XskSetSockoptIn {
+    option: u32,
+    input_buffer_length: u32,
+    input_buffer: *const c_void,
 }
 
-// The table is immutable function pointers
-unsafe impl Send for Api {}
-unsafe impl Sync for Api {}
-
-const API_VERSION_2: u32 = 2;
-
-fn load_api() -> Result<Api, String> {
-    let path = system32().join("xdpapi.dll");
-    let lib = unsafe { libloading::Library::new(&path) }.map_err(|e| format!("{}: {e}", path.display()))?;
-    let open: libloading::Symbol<unsafe extern "system" fn(u32, *mut *const ApiTable) -> i32> =
-        unsafe { lib.get(b"XdpOpenApi\0") }.map_err(|e| format!("xdpapi.dll: {e}"))?;
-    let mut table: *const ApiTable = std::ptr::null();
-    let hr = unsafe { open(API_VERSION_2, &mut table) };
-    if hr < 0 || table.is_null() {
-        return Err(format!("XdpOpenApi failed: HRESULT 0x{:08X}", hr as u32));
-    }
-    Ok(Api { table: unsafe { &*table }, _lib: lib })
+#[repr(C)]
+struct XskNotifyIn {
+    flags: u32,
+    wait_timeout_milliseconds: u32,
 }
 
-/// The API once loaded (not cached while it is missing, so that an install can follow)
-fn api() -> Result<&'static Api, String> {
-    static API: Mutex<Option<&'static Api>> = Mutex::new(None);
-    let mut slot = API.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some(api) = *slot {
-        return Ok(api);
-    }
-    let api: &'static Api = Box::leak(Box::new(load_api()?));
-    *slot = Some(api);
-    Ok(api)
+/// The extended attribute that opens an XSK object for an API version:
+/// XDP_FILE_FULL_EA_INFORMATION { NextEntryOffset, Flags, EaNameLength, EaValueLength, EaName }
+/// followed by XDP_OPEN_PACKET { MajorVersion 1, MinorVersion 0, ApiVersion, ObjectType }
+fn open_packet_ea(api_version: u32, object_type: u32) -> Vec<u8> {
+    const HEADER: usize = 12; // sizeof(XDP_FILE_FULL_EA_INFORMATION), EaName[1] included and padded
+    const OPEN_PACKET: usize = 12;
+    let total = HEADER + OPEN_PACKET_NAME.len() + OPEN_PACKET;
+    let mut ea = vec![0u8; total];
+    ea[5] = (OPEN_PACKET_NAME.len() - 1) as u8;
+    ea[6..8].copy_from_slice(&((total - HEADER - OPEN_PACKET_NAME.len()) as u16).to_le_bytes());
+    ea[8..8 + OPEN_PACKET_NAME.len()].copy_from_slice(OPEN_PACKET_NAME);
+    let packet = 8 + OPEN_PACKET_NAME.len();
+    ea[packet..packet + 2].copy_from_slice(&1u16.to_le_bytes());
+    ea[packet + 2..packet + 4].copy_from_slice(&0u16.to_le_bytes());
+    ea[packet + 4..packet + 8].copy_from_slice(&api_version.to_le_bytes());
+    ea[packet + 8..packet + 12].copy_from_slice(&object_type.to_le_bytes());
+    ea
 }
 
-fn check(what: &str, hr: i32) -> Result<(), String> {
-    if hr < 0 {
-        return Err(format!("{what} failed: HRESULT 0x{:08X}", hr as u32));
-    }
-    Ok(())
-}
-
-fn close_handle(handle: Handle) {
+fn nt_error(what: &str, status: i32) -> String {
     #[cfg(windows)]
-    unsafe {
-        windows_sys::Win32::Foundation::CloseHandle(handle);
+    let detail = {
+        let code = unsafe { windows_sys::Win32::Foundation::RtlNtStatusToDosError(status) };
+        std::io::Error::from_raw_os_error(code as i32).to_string()
+    };
+    #[cfg(not(windows))]
+    let detail = String::new();
+    format!("{what} failed: NTSTATUS 0x{:08X} ({detail})", status as u32)
+}
+
+#[cfg(windows)]
+mod nt {
+    use super::*;
+    use windows_sys::Wdk::Foundation::OBJECT_ATTRIBUTES;
+    use windows_sys::Wdk::Storage::FileSystem::{NtCreateFile, FILE_CREATE};
+    use windows_sys::Wdk::System::IO::NtDeviceIoControlFile;
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, GENERIC_READ, GENERIC_WRITE, STATUS_PENDING, UNICODE_STRING, WAIT_OBJECT_0,
+    };
+    use windows_sys::Win32::Storage::FileSystem::{
+        SetFileCompletionNotificationModes, FILE_SHARE_READ, FILE_SHARE_WRITE, SYNCHRONIZE,
+    };
+    use windows_sys::Win32::System::Threading::{CreateEventW, WaitForSingleObject, INFINITE};
+    use windows_sys::Win32::System::IO::IO_STATUS_BLOCK;
+
+    const OBJ_CASE_INSENSITIVE: u32 = 0x40;
+    const FILE_SKIP_SET_EVENT_ON_HANDLE: u8 = 0x2;
+    const STATUS_OBJECT_NAME_NOT_FOUND: i32 = 0xC000_0034_u32 as i32;
+    const STATUS_OBJECT_PATH_NOT_FOUND: i32 = 0xC000_003A_u32 as i32;
+
+    fn open_device(name: &str, ea: &[u8]) -> Result<Handle, i32> {
+        let wide: Vec<u16> = name.encode_utf16().collect();
+        let unicode = UNICODE_STRING {
+            Length: (wide.len() * 2) as u16,
+            MaximumLength: (wide.len() * 2) as u16,
+            Buffer: wide.as_ptr() as *mut u16,
+        };
+        let attributes = OBJECT_ATTRIBUTES {
+            Length: std::mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
+            RootDirectory: std::ptr::null_mut(),
+            ObjectName: &unicode,
+            Attributes: OBJ_CASE_INSENSITIVE,
+            SecurityDescriptor: std::ptr::null(),
+            SecurityQualityOfService: std::ptr::null(),
+        };
+        let mut handle: Handle = std::ptr::null_mut();
+        let mut iosb: IO_STATUS_BLOCK = unsafe { std::mem::zeroed() };
+        let status = unsafe {
+            NtCreateFile(
+                &mut handle,
+                GENERIC_READ | GENERIC_WRITE | SYNCHRONIZE,
+                &attributes,
+                &mut iosb,
+                std::ptr::null(),
+                0,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                FILE_CREATE,
+                0,
+                ea.as_ptr() as *const c_void,
+                ea.len() as u32,
+            )
+        };
+        if status < 0 {
+            return Err(status);
+        }
+        Ok(handle)
+    }
+
+    /// XskCreate: a new AF_XDP socket
+    pub fn create_socket() -> Result<Handle, String> {
+        let ea = open_packet_ea(XDP_API_VERSION_3, XDP_OBJECT_TYPE_XSK);
+        let mut last = 0;
+        for name in XSK_DEVICE_NAMES {
+            match open_device(name, &ea) {
+                Ok(handle) => {
+                    if unsafe { SetFileCompletionNotificationModes(handle, FILE_SKIP_SET_EVENT_ON_HANDLE) } == 0 {
+                        let error = std::io::Error::last_os_error();
+                        close(handle);
+                        return Err(format!("XskCreate failed: {error}"));
+                    }
+                    return Ok(handle);
+                }
+                Err(status) if status == STATUS_OBJECT_NAME_NOT_FOUND || status == STATUS_OBJECT_PATH_NOT_FOUND => {
+                    last = status;
+                }
+                Err(status) => return Err(nt_error("XskCreate", status)),
+            }
+        }
+        Err(nt_error("XskCreate (XDP driver not loaded)", last))
+    }
+
+    /// One IOCTL, waiting for it when the driver completes it later; returns IoStatus.Information
+    pub fn ioctl(
+        handle: Handle,
+        code: u32,
+        input: *const c_void,
+        input_len: usize,
+        output: *mut c_void,
+        output_len: usize,
+    ) -> Result<usize, i32> {
+        let event = unsafe { CreateEventW(std::ptr::null(), 0, 0, std::ptr::null()) };
+        if event.is_null() {
+            return Err(STATUS_PENDING);
+        }
+        let mut iosb: IO_STATUS_BLOCK = unsafe { std::mem::zeroed() };
+        iosb.Anonymous.Status = STATUS_PENDING;
+        let mut status = unsafe {
+            NtDeviceIoControlFile(
+                handle,
+                event,
+                None,
+                std::ptr::null(),
+                &mut iosb,
+                code,
+                input,
+                input_len as u32,
+                output,
+                output_len as u32,
+            )
+        };
+        if status == STATUS_PENDING {
+            status = if unsafe { WaitForSingleObject(event, INFINITE) } == WAIT_OBJECT_0 {
+                unsafe { iosb.Anonymous.Status }
+            } else {
+                STATUS_PENDING
+            };
+        }
+        unsafe { CloseHandle(event) };
+        if status < 0 {
+            return Err(status);
+        }
+        Ok(iosb.Information)
+    }
+
+    pub fn close(handle: Handle) {
+        unsafe { CloseHandle(handle) };
     }
 }
 
-/// The driver is loaded and the API can create sockets
-pub fn usable() -> bool {
-    let Ok(api) = api() else {
-        return false;
-    };
-    let mut socket: Handle = std::ptr::null_mut();
-    if unsafe { (api.table.xsk_create)(&mut socket) } < 0 {
-        return false;
+#[cfg(not(windows))]
+mod nt {
+    use super::*;
+
+    pub fn create_socket() -> Result<Handle, String> {
+        Err("XDP for Windows is only available on Windows".into())
     }
-    close_handle(socket);
-    true
+
+    pub fn ioctl(_: Handle, _: u32, _: *const c_void, _: usize, _: *mut c_void, _: usize) -> Result<usize, i32> {
+        Err(-1)
+    }
+
+    pub fn close(_: Handle) {}
+}
+
+fn set_sockopt(handle: Handle, option: u32, value: *const c_void, len: usize, what: &str) -> Result<(), String> {
+    let input = XskSetSockoptIn { option, input_buffer_length: len as u32, input_buffer: value };
+    nt::ioctl(
+        handle,
+        IOCTL_XSK_SET_SOCKOPT,
+        &input as *const _ as *const c_void,
+        std::mem::size_of::<XskSetSockoptIn>(),
+        std::ptr::null_mut(),
+        0,
+    )
+    .map(|_| ())
+    .map_err(|status| nt_error(what, status))
+}
+
+/// The driver is loaded and AF_XDP sockets can be created
+pub fn usable() -> bool {
+    match nt::create_socket() {
+        Ok(handle) => {
+            nt::close(handle);
+            true
+        }
+        Err(_) => false,
+    }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -346,7 +504,6 @@ impl Drop for Umem {
 
 /// A transmit-only AF_XDP socket bound to queue 0 of an interface (generic XDP)
 pub struct Socket {
-    api: &'static Api,
     handle: Handle,
     // Declared after `handle`: freed after the socket is closed
     umem: Umem,
@@ -355,32 +512,39 @@ pub struct Socket {
 
 impl Socket {
     pub fn open(if_index: u32) -> Result<Socket, String> {
-        let api = api()?;
-        let t = api.table;
-        let mut handle: Handle = std::ptr::null_mut();
-        check("XskCreate", unsafe { (t.xsk_create)(&mut handle) })?;
-        let mut socket = Socket { api, handle, umem: Umem::new(), rings: RingInfoSet::default() };
-        let set = |option: u32, value: *const c_void, len: usize, what: &str| {
-            check(what, unsafe { (t.xsk_set_sockopt)(handle, option, value, len as u32) })
-        };
+        let handle = nt::create_socket()?;
+        let mut socket = Socket { handle, umem: Umem::new(), rings: RingInfoSet::default() };
         let reg = UmemReg {
             total_size: UMEM_SIZE as u64,
             chunk_size: CHUNK_SIZE,
             headroom: 0,
             address: socket.umem.0 as *mut c_void,
         };
-        set(XSK_SOCKOPT_UMEM_REG, &reg as *const _ as *const c_void, std::mem::size_of::<UmemReg>(), "UMEM")?;
+        set_sockopt(handle, XSK_SOCKOPT_UMEM_REG, &reg as *const _ as *const c_void, size_of::<UmemReg>(), "UMEM")?;
         let size = RING_SIZE;
-        set(XSK_SOCKOPT_TX_RING_SIZE, &size as *const _ as *const c_void, 4, "TX ring")?;
-        set(XSK_SOCKOPT_TX_COMPLETION_RING_SIZE, &size as *const _ as *const c_void, 4, "completion ring")?;
-        check(&format!("XskBind (interface {if_index})"), unsafe {
-            (t.xsk_bind)(handle, if_index, 0, XSK_BIND_FLAG_TX | XSK_BIND_FLAG_GENERIC)
-        })?;
-        check("XskActivate", unsafe { (t.xsk_activate)(handle, 0) })?;
-        let mut len = std::mem::size_of::<RingInfoSet>() as u32;
-        check("ring info", unsafe {
-            (t.xsk_get_sockopt)(handle, XSK_SOCKOPT_RING_INFO, &mut socket.rings as *mut _ as *mut c_void, &mut len)
-        })?;
+        let size_ptr = &size as *const u32 as *const c_void;
+        set_sockopt(handle, XSK_SOCKOPT_TX_RING_SIZE, size_ptr, 4, "TX ring")?;
+        set_sockopt(handle, XSK_SOCKOPT_TX_COMPLETION_RING_SIZE, size_ptr, 4, "completion ring")?;
+        let bind = XskBindIn { if_index, queue_id: 0, flags: XSK_BIND_FLAG_TX | XSK_BIND_FLAG_GENERIC };
+        nt::ioctl(handle, IOCTL_XSK_BIND, &bind as *const _ as *const c_void, size_of::<XskBindIn>(), null_mut(), 0)
+            .map_err(|status| nt_error(&format!("XskBind (interface {if_index})"), status))?;
+        let activate = 0u32;
+        nt::ioctl(handle, IOCTL_XSK_ACTIVATE, &activate as *const _ as *const c_void, 4, null_mut(), 0)
+            .map_err(|status| nt_error("XskActivate", status))?;
+        let option = XSK_SOCKOPT_RING_INFO;
+        let rings = &mut socket.rings as *mut RingInfoSet as *mut c_void;
+        let returned = nt::ioctl(
+            handle,
+            IOCTL_XSK_GET_SOCKOPT,
+            &option as *const _ as *const c_void,
+            4,
+            rings,
+            size_of::<RingInfoSet>(),
+        )
+        .map_err(|status| nt_error("ring info", status))?;
+        if returned < size_of::<RingInfoSet>() {
+            return Err(format!("ring info: {returned} bytes returned"));
+        }
         Ok(socket)
     }
 
@@ -410,15 +574,18 @@ impl Socket {
         let completion_consumer = completion.index(completion.consumer_index_offset);
         let deadline = Instant::now() + Duration::from_secs(2);
         loop {
-            let mut result = 0u32;
-            let hr = unsafe {
-                (self.api.table.xsk_notify_socket)(
-                    self.handle,
-                    XSK_NOTIFY_FLAG_POKE_TX | XSK_NOTIFY_FLAG_WAIT_TX,
-                    500,
-                    &mut result,
-                )
+            let notify = XskNotifyIn {
+                flags: XSK_NOTIFY_FLAG_POKE_TX | XSK_NOTIFY_FLAG_WAIT_TX,
+                wait_timeout_milliseconds: 500,
             };
+            let notified = nt::ioctl(
+                self.handle,
+                IOCTL_XSK_NOTIFY,
+                &notify as *const _ as *const c_void,
+                size_of::<XskNotifyIn>(),
+                null_mut(),
+                0,
+            );
             let done =
                 completion_producer.load(Ordering::Acquire).wrapping_sub(completion_consumer.load(Ordering::Relaxed));
             if done > 0 {
@@ -426,7 +593,10 @@ impl Socket {
                 return Ok(());
             }
             if Instant::now() > deadline {
-                return Err(format!("XDP did not complete the transmission (HRESULT 0x{:08X})", hr as u32));
+                return Err(match notified {
+                    Err(status) => nt_error("XDP transmission", status),
+                    Ok(_) => "XDP did not complete the transmission".into(),
+                });
             }
         }
     }
@@ -434,7 +604,7 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        close_handle(self.handle);
+        nt::close(self.handle);
     }
 }
 
@@ -458,7 +628,33 @@ mod tests {
         assert_eq!(std::mem::size_of::<UmemReg>(), 24);
         assert_eq!(std::mem::size_of::<RingInfo>(), 40);
         assert_eq!(std::mem::size_of::<RingInfoSet>(), 160);
-        assert_eq!(std::mem::size_of::<ApiTable>(), 14 * 8);
+        assert_eq!(size_of::<XskBindIn>(), 12);
+        assert_eq!(size_of::<XskSetSockoptIn>(), 16);
+        assert_eq!(size_of::<XskNotifyIn>(), 8);
+    }
+
+    #[test]
+    fn ioctl_codes_match_afxdp_h() {
+        // CTL_CODE(FILE_DEVICE_NETWORK, n, method, FILE_WRITE_ACCESS)
+        assert_eq!(IOCTL_XSK_BIND, 0x0012_8000);
+        assert_eq!(IOCTL_XSK_ACTIVATE, 0x0012_8004);
+        assert_eq!(IOCTL_XSK_GET_SOCKOPT, 0x0012_8008);
+        assert_eq!(IOCTL_XSK_SET_SOCKOPT, 0x0012_800C);
+        assert_eq!(IOCTL_XSK_NOTIFY, 0x0012_8013);
+    }
+
+    #[test]
+    fn open_packet_extended_attribute() {
+        // XDP_OPEN_EA_LENGTH = 12 + sizeof("XdpOpenPacket000") + 12
+        let ea = open_packet_ea(XDP_API_VERSION_3, XDP_OBJECT_TYPE_XSK);
+        assert_eq!(ea.len(), 41);
+        assert_eq!(&ea[0..4], &[0, 0, 0, 0]); // NextEntryOffset
+        assert_eq!((ea[4], ea[5]), (0, 16)); // Flags, EaNameLength (without the NUL)
+        assert_eq!(u16::from_le_bytes([ea[6], ea[7]]), 12); // EaValueLength
+        assert_eq!(&ea[8..25], b"XdpOpenPacket000\0");
+        assert_eq!(&ea[25..37], &[1, 0, 0, 0, 3, 0, 0, 0, 1, 0, 0, 0]); // 1.0, API 3, XSK
+                                                                        // sizeof(XDP_FILE_FULL_EA_INFORMATION) counts EaName[1] and its padding, as the C macro does
+        assert_eq!(&ea[37..], &[0, 0, 0, 0]);
     }
 
     #[test]

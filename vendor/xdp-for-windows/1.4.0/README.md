@@ -8,7 +8,9 @@ Project: <https://github.com/microsoft/xdp-for-windows> — MIT license, see `LI
 `xdp.sys` and `xdp.cat` are signed by *Microsoft Windows Hardware Compatibility Publisher*;
 the catalog covers the files listed in `xdp.inf`, so none of them may be changed.
 `SHA256SUMS` lists the files; `src/xdp.rs` embeds them in `winlldp.exe` and installs the
-driver the way the package's `xdp-setup.ps1 -Install xdp` does.
+driver the way the package's `xdp-setup.ps1 -Install xdp` does. WinLLDP talks to the driver with
+the AF_XDP API version 3 (IOCTLs); `xdpapi.dll` (deprecated API) is installed only because the
+signed package includes it.
 
 To update: download the new package, replace these files, update `SHA256SUMS`, this README
 and `XDP_VERSION` in `src/xdp.rs`.

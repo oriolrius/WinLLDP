@@ -72,7 +72,12 @@ WinLLDP needs is part of its package or is installed transparently.
   as WinLLDP already did. XDP is officially tested on Windows Server 2019/2022; it was validated on
   Windows 11 25H2 here.
 - Capture needs Windows 11 24H2+ / Windows Server 2025+.
-- `xdpapi.dll` (API version 2) is the deprecated entry point; a later change can talk to the driver
-  directly (API version 3, header-only IOCTLs) without changing the package.
+- WinLLDP uses the supported **AF_XDP API version 3** and no deprecated interface: like the SDK's
+  header-only implementation (`xdp/details/ioctldef.h`, `ioctlfn.h`, `afxdp.h`), it opens
+  `\\Device\\xdpapi\\xsk` with `NtCreateFile` and an `XdpOpenPacket000` extended attribute (version
+  1.0, API 3, object type XSK) and drives the socket with `NtDeviceIoControlFile` (`IOCTL_XSK_BIND`,
+  `_ACTIVATE`, `_GET_SOCKOPT`, `_SET_SOCKOPT`, `_NOTIFY`). `xdpapi.dll`, the deprecated function-table
+  API, is still installed because it is part of the signed package, but WinLLDP never loads it.
+  Validated the same way: transparent install, LLDP received by nas1, all tests.
 - Updating XDP or NSSM: replace the vendored files, `SHA256SUMS` and the version constants
   (`xdp::XDP_VERSION`, `service::NSSM_VERSION`); WinLLDP upgrades the XDP it installed.
