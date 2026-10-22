@@ -108,9 +108,27 @@ installed), with `examples/xdp_spike.rs`:
   switch exactly like a frame sent through Npcap.
 - **Coexistence**: XDP, Packet Monitor and Npcap ran at the same time without interference; no program
   (receive hook) is needed to transmit.
-- **Not verified**: delivery on a physical NIC outside a Hyper-V switch (none was connected), and
-  reception by another machine. The WSL VM on the `WSL (Hyper-V firewall)` switch received neither the
-  XDP frame nor the Npcap one, so that switch does not deliver LLDP to the VM, whatever the sender.
+- **Received by another machine** (2026-10-22, with the network records in the infra-kb runbooks
+  `switch.md` and `lldp-port-verification.md`): d0 is cabled to CRS125 `ether20`; nas1's `lldpd`
+  (`eth1`, CRS `ether1`) recorded the frame sent through XDP on d0's **physical** NIC as a neighbor
+  (`lldpcli show neighbors hidden`: chassis `50:eb:f6:2c:f2:ba`, SysName `xdp-test`, SysDescr
+  `Windows 10.0.26200 AMD64`, TTL 120), within seconds of the send.
+- **Hyper-V hosts: LLDP sent on a `vEthernet` adapter never reaches the wire, whatever the sender.**
+  Frames sent through Npcap *or* XDP on `vEthernet (ymbihq.local)` (the host port of the external
+  switch) never arrived at nas1 or at CRS `ether20`; Packet Monitor shows them crossing the switch to
+  VM ports but never leaving the physical NIC (`e2fn.sys`): the Hyper-V switch, like an 802.1D bridge,
+  does not forward the reserved `01:80:c2:00:00:0e` address to its uplink. Sent on the physical NIC
+  under the switch (`Ethernet`, ifIndex 27, same MAC, no IP stack, so not a WinLLDP interface), both
+  XDP and Npcap (`\Device\NPF_{E56200E0-…}`, SysName `npcap-test`) reached nas1. **v1 and v2 have
+  this bug**: on hosts with a Hyper-V external switch, WinLLDP must send on the physical adapter that
+  backs the `vEthernet` interface (same MAC; it is listed by `GetIfTable2`, not by
+  `GetAdaptersAddresses`). Windows' own agent already sends from the physical NIC (nas1 sees its
+  `D0` chassis, TTL 3601).
+- **Not usable as receivers here**: the CRS125's CPU sniffer (`/tool sniffer quick interface=ether20`)
+  sees only what the switch chip sends to the CPU, not frames switched between ports; p0 (`ether12`) and
+  the UDM (`ether17`), on trunk ports, received no LLDP from any other host during the tests, only the
+  CRS's own; the WSL VM on the `WSL (Hyper-V firewall)` switch received neither XDP nor Npcap frames.
+  nas1 on an access port did receive.
 - **Implementation notes**: `xdpapi.dll` is the deprecated path; the supported API (version 3) is
   header-only and talks to the driver directly (`NtCreateFile` on `\Device\xdpapi\xsk` with an
   `XdpOpenPacket000` extended attribute, then `NtDeviceIoControlFile`), which a Rust backend can do

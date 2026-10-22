@@ -1,6 +1,6 @@
 //! Spike: send an LLDP frame with XDP for Windows (AF_XDP, generic mode), without Npcap.
 //! Needs XDP for Windows installed (xdp-setup.ps1 -Install xdp) and administrator rights:
-//!   xdp_spike ["Interface name"]
+//!   xdp_spike ["Interface name"] [ifIndex to bind instead]
 
 use std::ffi::c_void;
 use std::sync::atomic::{fence, AtomicU32, Ordering};
@@ -80,7 +80,13 @@ unsafe fn ring_u32(info: &RingInfo, offset: u32) -> &AtomicU32 {
 
 fn main() {
     let wanted = std::env::args().nth(1).unwrap_or("vEthernet (ymbihq.local)".into());
-    let iface = sysinfo::interface_by_name(&wanted).expect("interface not found");
+    // Optional ifIndex to bind to instead, e.g. a physical NIC behind a Hyper-V switch
+    // (no IP stack, so not a WinLLDP interface) that shares the named interface's MAC
+    let bind_index: Option<u32> = std::env::args().nth(2).and_then(|a| a.parse().ok());
+    let mut iface = sysinfo::interface_by_name(&wanted).expect("interface not found");
+    if let Some(index) = bind_index {
+        iface.if_index = index;
+    }
     println!("== {} (ifIndex {}, {})", iface.name, iface.if_index, iface.mac.as_deref().unwrap_or("?"));
 
     let lib = unsafe { libloading::Library::new(sysinfo::system32().join("xdpapi.dll")) }
