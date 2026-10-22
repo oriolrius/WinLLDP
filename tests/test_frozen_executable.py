@@ -7,6 +7,15 @@ import json
 import time
 import unittest
 from pathlib import Path
+
+
+def npcap_installed():
+    """Packet capture needs Npcap (or WinPcap); GitHub's Windows runners do not have it"""
+    system32 = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32'
+    return (system32 / 'Npcap' / 'wpcap.dll').exists() or (system32 / 'wpcap.dll').exists()
+
+
+requires_npcap = unittest.skipUnless(npcap_installed(), "Npcap is not installed (needed for packet capture)")
 try:
     import tomllib
 except ImportError:
@@ -198,6 +207,7 @@ class TestFrozenExecutable(unittest.TestCase):
             f"Expected version '{expected_version}' not found in output: {result.stdout}"
         )
     
+    @requires_npcap
     def test_files_created_in_exe_directory(self):
         """Test that files are created in exe directory, not temp"""
         # Start capture - may take time to initialize
@@ -224,6 +234,7 @@ class TestFrozenExecutable(unittest.TestCase):
         # PID file should be cleaned up
         self.assertFalse(pid_file.exists(), "PID file not cleaned up")
     
+    @requires_npcap
     def test_no_files_in_temp_directory(self):
         """Test that no files are created in temp directories"""
         temp_dir = tempfile.gettempdir()
@@ -253,6 +264,7 @@ class TestFrozenExecutable(unittest.TestCase):
         self.assertEqual(len(lldp_files), 0, 
                         f"Found LLDP files in temp directory: {lldp_files}")
     
+    @requires_npcap
     def test_capture_log_command(self):
         """Test that capture log command finds log in correct location"""
         # Start capture - may take time to initialize, be generous with timeout
