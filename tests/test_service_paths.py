@@ -55,8 +55,9 @@ class TestServicePaths(unittest.TestCase):
         self.assertEqual(receiver._pid_file, config.pid_file)
         self.assertEqual(receiver._log_file, config.log_file)
     
+    @patch('winlldp.system_info.SystemInfo.npcap_installed', return_value=True)
     @patch('subprocess.Popen')
-    def test_capture_subprocess_receives_correct_paths(self, mock_popen):
+    def test_capture_subprocess_receives_correct_paths(self, mock_popen, _npcap):
         """Test that capture subprocess is started with correct paths"""
         # Mock process
         mock_process = MagicMock()
