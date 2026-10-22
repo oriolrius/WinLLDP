@@ -23,7 +23,7 @@ env.example     # example configuration
 ## Key Components
 
 - **LLDP**: IEEE 802.1AB TLVs (Chassis ID, Port ID, TTL, Port/System Description, System Name, Capabilities, Management Address) plus LLDP-MED (capabilities, hardware/firmware/software revision, model name); multicast 01:80:c2:00:00:0e.
-- **Npcap**: `src/pcap.rs` loads `wpcap.dll` at run time. Missing Npcap must always give a clear error, never a fake success.
+- **Npcap**: `src/pcap.rs` loads `wpcap.dll` at run time. Missing Npcap must always give a clear error, never a fake success. Npcap must not be bundled (license); the planned native capture backend (Packet Monitor API) is described in `docs/decisions/0001-npcap.md`.
 - **Configuration**: environment → `.env` (python-dotenv compatible parser in `src/dotenv.rs`) → defaults: `LLDP_INTERVAL`, `LLDP_INTERFACE`, `LLDP_TTL`, `LLDP_SYSTEM_NAME`, `LLDP_PORT_DESCRIPTION`, `LLDP_MANAGEMENT_ADDRESS`, `LLDP_NEIGHBORS_FILE`.
 - **Files**: next to the executable: `neighbors.json`, `capture.pid`, `winlldp_capture.log`, `nssm_service.log`.
 

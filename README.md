@@ -310,7 +310,7 @@ Same commands, options, `.env` settings, output and files (`neighbors.json`, `ca
 ## Troubleshooting
 
 ### "Npcap is not installed"
-WinLLDP sends and captures raw Ethernet frames through [Npcap](https://npcap.com/). Install it (the default options are fine) and try again.
+WinLLDP sends and captures raw Ethernet frames through [Npcap](https://npcap.com/). Install it (the default options are fine) and try again. The free Npcap license covers up to 5 systems; larger deployments need an Npcap license (see [ADR 0001](docs/decisions/0001-npcap.md)).
 
 ### "Access Denied" Error
 - **Solution**: Run PowerShell as Administrator
@@ -331,7 +331,7 @@ WinLLDP sends and captures raw Ethernet frames through [Npcap](https://npcap.com
 
 - **Windows 10/11 or Windows Server 2016+** (64-bit)
 - **Administrator privileges** (for raw network access)
-- **[Npcap](https://npcap.com/)** (to send and capture LLDP frames)
+- **[Npcap](https://npcap.com/)** (to send and capture LLDP frames). Install it yourself: WinLLDP cannot bundle it, and its free license covers up to 5 systems; see [ADR 0001](docs/decisions/0001-npcap.md)
 - **NSSM** (for service installation)
 - **Network adapter** that supports promiscuous mode
 

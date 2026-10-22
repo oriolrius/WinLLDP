@@ -75,6 +75,10 @@ Windows Service (NSSM) → winlldp.exe service-run
 
 Use Conventional Commits (`feat:`, `fix:`, `docs:`, ...): commitizen derives the version from them.
 
+## Design decisions
+
+- [ADR 0001: Npcap — no bundling, native capture with Packet Monitor](decisions/0001-npcap.md)
+
 ## Resources
 
 - [IEEE 802.1AB-2016](https://standards.ieee.org/standard/802_1AB-2016.html)
