@@ -1,6 +1,6 @@
 [package]
 name = "winlldp"
-version = "1.0.1"
+version = "2.0.0"
 edition = "2021"
 rust-version = "1.85"
 description = "LLDP (IEEE 802.1AB) agent for Windows: announces the host and discovers its network neighbors"

@@ -2,6 +2,31 @@
 
 All notable changes to WinLLDP are listed here. The file is maintained by [commitizen](https://commitizen-tools.github.io/commitizen/) from the Conventional Commit messages.
 
+## v2.0.0 (2026-10-22)
+
+### BREAKING CHANGE
+
+- v2 is a Rust executable built with cargo instead of a
+PyInstaller bundle. Failures now exit with code 1, the LLDP-MED
+software revision is "WinLLDP <version>", and the management address
+TLV carries the real ifIndex.
+
+### Feat
+
+- send LLDP with bundled XDP for Windows, capture with Packet Monitor only
+- capture LLDP with Windows Packet Monitor, Npcap as fallback
+- Packet Monitor API bindings and the ADR 0001 task 2 spike
+- reimplement WinLLDP in Rust
+
+### Fix
+
+- write the application log next to the executable, not in %TEMP%
+- fail capture start with a clear message when Npcap is missing
+
+### Refactor
+
+- talk to XDP with the AF_XDP API v3 instead of deprecated xdpapi.dll
+
 ## v1.0.1 (2026-10-22)
 
 ### Fix
