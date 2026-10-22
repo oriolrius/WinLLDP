@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies (locked)
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Build executable
+        run: uv run pyinstaller --clean --noconfirm pyinstaller.spec
+
+      - name: Smoke test
+        run: .\dist\winlldp.exe version
+
+      - name: Tests (unit, path resolution and frozen executable)
+        run: uv run python -m unittest discover -s tests -p "test_*.py" -v
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: winlldp-${{ github.sha }}
+          path: dist/winlldp.exe
+          retention-days: 7
