@@ -41,6 +41,9 @@ jobs:
       - name: Tests
         run: cargo test --locked --release
 
+      - name: Tests that install/remove the XDP driver and the service (one at a time)
+        run: cargo test --locked --release --test cli -- --ignored --test-threads=1
+
       - name: Release notes from CHANGELOG.md
         shell: bash
         run: uvx --from commitizen cz changelog "${GITHUB_REF_NAME#v}" --dry-run > release-notes.md
@@ -52,4 +55,6 @@ jobs:
         with:
           name: WinLLDP ${{ github.ref_name }}
           body_path: release-notes.md
-          files: winlldp-${{ github.ref_name }}.exe
+          files: |
+            winlldp-${{ github.ref_name }}.exe
+            THIRD-PARTY-NOTICES.md

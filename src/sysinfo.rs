@@ -6,7 +6,7 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, UdpSocket};
 pub struct Interface {
     /// Friendly name, e.g. "Ethernet 2"
     pub name: String,
-    /// Adapter GUID, e.g. "{0F2B...}": the Npcap device is \Device\NPF_{GUID}
+    /// Adapter GUID, e.g. "{0F2B...}"
     pub adapter_name: String,
     /// Adapter description, e.g. "Intel(R) Wi-Fi 6E AX210 160MHz"
     pub description: String,
@@ -17,22 +17,26 @@ pub struct Interface {
     pub if_index: u32,
 }
 
-impl Interface {
-    pub fn npcap_device(&self) -> String {
-        format!(r"\Device\NPF_{}", self.adapter_name)
-    }
+/// Any network adapter Windows knows (GetIfTable2), including those without an IP stack
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Adapter {
+    pub index: u32,
+    pub alias: String,
+    pub mac: Vec<u8>,
+    /// A real NIC (not virtual, not an NDIS filter instance) with a connector
+    pub physical: bool,
+    pub is_up: bool,
 }
 
-/// Npcap (or the older WinPcap) is needed to send and capture raw Ethernet frames
-pub fn npcap_installed() -> bool {
-    let system32 = system32();
-    system32.join("Npcap").join("wpcap.dll").exists() || system32.join("wpcap.dll").exists()
-}
-
-pub const NPCAP_URL: &str = "https://npcap.com/";
-
-pub fn npcap_missing_message() -> String {
-    format!("Npcap is not installed; it is required for packet capture. Install it from {NPCAP_URL}")
+/// The adapter that puts an interface's frames on the wire.
+///
+/// On a Hyper-V host, a `vEthernet` adapter attached to an external virtual switch shares its MAC
+/// with the physical NIC behind the switch, and the switch does not forward LLDP's reserved
+/// multicast address to that NIC: LLDP must be sent on the physical NIC itself. Returns None when
+/// the interface sends for itself.
+pub fn uplink_adapter<'a>(iface: &Interface, adapters: &'a [Adapter]) -> Option<&'a Adapter> {
+    let mac = iface.mac.as_deref().and_then(mac_to_bytes)?;
+    adapters.iter().find(|a| a.index != iface.if_index && a.physical && a.is_up && a.mac == mac)
 }
 
 pub fn system32() -> std::path::PathBuf {
@@ -201,6 +205,34 @@ mod win {
         result
     }
 
+    pub fn adapters() -> Vec<Adapter> {
+        use windows_sys::Win32::NetworkManagement::IpHelper::{FreeMibTable, GetIfTable2, MIB_IF_TABLE2};
+        let mut table: *mut MIB_IF_TABLE2 = std::ptr::null_mut();
+        if unsafe { GetIfTable2(&mut table) } != ERROR_SUCCESS || table.is_null() {
+            return Vec::new();
+        }
+        let rows = unsafe {
+            std::slice::from_raw_parts(std::ptr::addr_of!((*table).Table) as *const _, (*table).NumEntries as usize)
+        };
+        let adapters = rows
+            .iter()
+            .map(|row: &windows_sys::Win32::NetworkManagement::IpHelper::MIB_IF_ROW2| {
+                let flags = row.InterfaceAndOperStatusFlags._bitfield;
+                let (hardware, filter, connector) = (flags & 1 != 0, flags & 2 != 0, flags & 4 != 0);
+                let len = (row.PhysicalAddressLength as usize).min(row.PhysicalAddress.len());
+                Adapter {
+                    index: row.InterfaceIndex,
+                    alias: unsafe { from_wide_ptr(row.Alias.as_ptr()) },
+                    mac: row.PhysicalAddress[..len].to_vec(),
+                    physical: hardware && connector && !filter,
+                    is_up: row.OperStatus == IfOperStatusUp,
+                }
+            })
+            .collect();
+        unsafe { FreeMibTable(table as *const _) };
+        adapters
+    }
+
     pub fn hostname() -> String {
         let mut size: u32 = 256;
         let mut buf = vec![0u16; size as usize];
@@ -293,13 +325,17 @@ mod win {
 }
 
 #[cfg(windows)]
-pub use win::{hostname, interfaces, os_caption, os_version, registry_string, wide};
+pub use win::{adapters, hostname, interfaces, os_caption, os_version, registry_string, wide};
 
 #[cfg(not(windows))]
 mod fallback {
     use super::Interface;
 
     pub fn interfaces() -> Vec<Interface> {
+        Vec::new()
+    }
+
+    pub fn adapters() -> Vec<super::Adapter> {
         Vec::new()
     }
 
@@ -317,7 +353,7 @@ mod fallback {
 }
 
 #[cfg(not(windows))]
-pub use fallback::{hostname, interfaces, os_caption, os_version};
+pub use fallback::{adapters, hostname, interfaces, os_caption, os_version};
 
 #[cfg(test)]
 mod tests {
@@ -337,6 +373,41 @@ mod tests {
         assert_eq!(ip_to_bytes("not-an-ip"), None);
     }
 
+    fn adapter(index: u32, alias: &str, mac: &[u8], physical: bool) -> Adapter {
+        Adapter { index, alias: alias.into(), mac: mac.to_vec(), physical, is_up: true }
+    }
+
+    #[test]
+    fn hyper_v_vethernet_sends_on_the_physical_nic_behind_the_switch() {
+        // The development machine: vEthernet (ymbihq.local) on an external switch over "Ethernet"
+        let mac = [0x50, 0xeb, 0xf6, 0x2c, 0xf2, 0xba];
+        let adapters = vec![
+            adapter(11, "vEthernet (ymbihq.local)", &mac, false),
+            adapter(27, "Ethernet", &mac, true),
+            adapter(46, "vEthernet (Default Switch)", &[0x00, 0x15, 0x5d, 0x00, 0xbd, 0x00], false),
+            adapter(10, "WiFi", &[0x00, 0x91, 0x9e, 0x7b, 0xfc, 0xeb], true),
+        ];
+        let iface = |index: u32, name: &str, mac: &str| Interface {
+            name: name.into(),
+            adapter_name: String::new(),
+            description: String::new(),
+            mac: Some(mac.into()),
+            is_up: true,
+            ipv4: vec![],
+            ipv6: vec![],
+            if_index: index,
+        };
+        let uplink = uplink_adapter(&iface(11, "vEthernet (ymbihq.local)", "50:eb:f6:2c:f2:ba"), &adapters);
+        assert_eq!(uplink.map(|a| a.index), Some(27));
+        // An internal switch has no physical NIC; a physical NIC sends for itself
+        assert!(uplink_adapter(&iface(46, "vEthernet (Default Switch)", "00:15:5d:00:bd:00"), &adapters).is_none());
+        assert!(uplink_adapter(&iface(10, "WiFi", "00:91:9e:7b:fc:eb"), &adapters).is_none());
+        // A physical NIC that is down is not used
+        let mut down = adapters.clone();
+        down[1].is_up = false;
+        assert!(uplink_adapter(&iface(11, "vEthernet (ymbihq.local)", "50:eb:f6:2c:f2:ba"), &down).is_none());
+    }
+
     #[test]
     fn capabilities_are_station_only() {
         assert_eq!(system_capabilities(), (0x80, 0x80));
@@ -352,6 +423,10 @@ mod tests {
         for i in interfaces() {
             assert!(i.adapter_name.starts_with('{'), "{i:?}");
             assert!(i.mac.is_some());
+        }
+        let all = adapters();
+        for i in interfaces() {
+            assert!(all.iter().any(|a| a.index == i.if_index), "{i:?} missing from GetIfTable2");
         }
     }
 }

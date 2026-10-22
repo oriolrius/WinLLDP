@@ -1,5 +1,5 @@
 //! Windows Packet Monitor (pktmon) real-time capture API, loaded at run time from
-//! PktMonApi.dll (Windows 11 24H2+ / Windows Server 2025). See docs/decisions/0001-npcap.md.
+//! PktMonApi.dll (Windows 11 24H2+ / Windows Server 2025). See docs/decisions/0002-xdp-and-packet-monitor.md.
 //!
 //! Layouts follow the documented packetmonitor.h definitions
 //! (PACKETMONITOR_MAX_NAME_LENGTH 64, PACKETMONITOR_MAX_STRING_LENGTH 128).
@@ -169,12 +169,29 @@ pub struct SourceInfo {
     pub secondary_id: u32,
     pub name: String,
     pub description: String,
+    pub mac: Option<[u8; 6]>,
 }
 
 impl From<&DataSourceSpecification> for SourceInfo {
     fn from(s: &DataSourceSpecification) -> Self {
-        SourceInfo { id: s.id, secondary_id: s.secondary_id, name: s.name(), description: s.description() }
+        SourceInfo {
+            id: s.id,
+            secondary_id: s.secondary_id,
+            name: s.name(),
+            description: s.description(),
+            mac: s.mac(),
+        }
     }
+}
+
+/// A WinLLDP interface to capture on
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Target {
+    /// Friendly name, e.g. "vEthernet (ymbihq.local)"
+    pub name: String,
+    /// Adapter description, e.g. "Intel(R) Wi-Fi 6E AX210 160MHz"
+    pub description: String,
+    pub mac: Vec<u8>,
 }
 
 /// Map every component ID (primary and secondary) to a WinLLDP interface name.
@@ -182,19 +199,18 @@ impl From<&DataSourceSpecification> for SourceInfo {
 /// `sources` is the hidden-included list (`showHidden = true`), where a data source may appear
 /// several times with the same `id` and different `secondary_id`s; the entry with
 /// `id == secondary_id` describes it. Its description is the interface's friendly name for
-/// Hyper-V host ports ("vEthernet (...)") and the adapter description for other NICs.
-/// `interfaces` are the active interfaces as (friendly name, adapter description).
-pub fn component_interfaces(
-    sources: &[SourceInfo],
-    interfaces: &[(String, String)],
-) -> std::collections::HashMap<u32, String> {
+/// Hyper-V host ports ("vEthernet (...)") and the adapter description for other NICs. A data
+/// source with an interface's MAC is that interface too: on a Hyper-V external switch the physical
+/// NIC shares the host port's MAC, and WinLLDP sends its LLDP there (see `sysinfo::uplink_adapter`).
+pub fn component_interfaces(sources: &[SourceInfo], interfaces: &[Target]) -> std::collections::HashMap<u32, String> {
     let mut map = std::collections::HashMap::new();
     for primary in sources.iter().filter(|s| s.id == s.secondary_id && !s.description.is_empty()) {
         let interface = interfaces
             .iter()
-            .find(|(name, _)| *name == primary.description)
-            .or_else(|| interfaces.iter().find(|(_, description)| *description == primary.description));
-        if let Some((name, _)) = interface {
+            .find(|t| t.name == primary.description)
+            .or_else(|| interfaces.iter().find(|t| t.description == primary.description))
+            .or_else(|| interfaces.iter().find(|t| primary.mac.is_some_and(|m| m[..] == t.mac[..])));
+        if let Some(Target { name, .. }) = interface {
             for source in sources.iter().filter(|s| s.id == primary.id) {
                 map.insert(source.id, name.clone());
                 map.insert(source.secondary_id, name.clone());
@@ -402,7 +418,14 @@ mod tests {
     use std::mem::{offset_of, size_of};
 
     fn source(id: u32, secondary_id: u32, name: &str, description: &str) -> SourceInfo {
-        SourceInfo { id, secondary_id, name: name.into(), description: description.into() }
+        let mac = match id {
+            220 | 209 => Some([0x50, 0xeb, 0xf6, 0x2c, 0xf2, 0xba]),
+            218 => Some([0x00, 0x15, 0x5d, 0x00, 0xbd, 0x0b]),
+            212 => Some([0x00, 0x15, 0x5d, 0x00, 0xbd, 0x00]),
+            20 => Some([0x00, 0x91, 0x9e, 0x7b, 0xfc, 0xeb]),
+            _ => None,
+        };
+        SourceInfo { id, secondary_id, name: name.into(), description: description.into(), mac }
     }
 
     // Data sources seen on the development machine (Hyper-V external switch + Wi-Fi)
@@ -420,14 +443,14 @@ mod tests {
         ]
     }
 
-    fn interfaces() -> Vec<(String, String)> {
+    fn interfaces() -> Vec<Target> {
         [
-            ("vEthernet (ymbihq.local)", "Hyper-V Virtual Ethernet Adapter #2"),
-            ("vEthernet (Default Switch)", "Hyper-V Virtual Ethernet Adapter"),
-            ("WiFi", "Intel(R) Wi-Fi 6E AX210 160MHz"),
+            ("vEthernet (ymbihq.local)", "Hyper-V Virtual Ethernet Adapter #2", [0x50, 0xeb, 0xf6, 0x2c, 0xf2, 0xba]),
+            ("vEthernet (Default Switch)", "Hyper-V Virtual Ethernet Adapter", [0x00, 0x15, 0x5d, 0x00, 0xbd, 0x00]),
+            ("WiFi", "Intel(R) Wi-Fi 6E AX210 160MHz", [0x00, 0x91, 0x9e, 0x7b, 0xfc, 0xeb]),
         ]
         .iter()
-        .map(|(n, d)| (n.to_string(), d.to_string()))
+        .map(|(n, d, m)| Target { name: n.to_string(), description: d.to_string(), mac: m.to_vec() })
         .collect()
     }
 
@@ -441,8 +464,11 @@ mod tests {
         assert_eq!(map[&15], "vEthernet (Default Switch)");
         // A NIC that is not behind a switch: matched by its adapter description
         assert_eq!(map[&20], "WiFi");
-        // The physical NIC behind the switch, the switch itself and VM ports are not WinLLDP interfaces
-        for other in [220, 207, 25, 218] {
+        // The physical NIC behind the external switch is the vEthernet interface (same MAC):
+        // WinLLDP sends there and receives the network's LLDP there
+        assert_eq!(map[&220], "vEthernet (ymbihq.local)");
+        // The switch itself and VM ports are not WinLLDP interfaces
+        for other in [207, 25, 218] {
             assert!(!map.contains_key(&other), "{other}");
         }
     }
@@ -450,7 +476,7 @@ mod tests {
     #[test]
     fn only_active_interfaces_are_mapped() {
         let map = component_interfaces(&sources(), &interfaces()[..1]);
-        assert_eq!(map.len(), 2);
+        assert_eq!(map.len(), 3);
         assert!(component_interfaces(&sources(), &[]).is_empty());
     }
 

@@ -7,13 +7,13 @@ pub mod fsdebug;
 pub mod logger;
 pub mod packet;
 pub mod paths;
-pub mod pcap;
 pub mod pktmon;
 pub mod process;
 pub mod sender;
 pub mod service;
 pub mod sysinfo;
 pub mod table;
+pub mod xdp;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 

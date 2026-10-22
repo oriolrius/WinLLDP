@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use winlldp::config::Config;
-use winlldp::{capture, fsdebug, logger, paths, process, py_str, sender, service, sysinfo, table};
+use winlldp::{capture, fsdebug, logger, paths, pktmon, process, py_str, sender, service, sysinfo, table, xdp};
 
 /// Windows LLDP Service CLI
 #[derive(Parser)]
@@ -84,6 +84,9 @@ enum Commands {
     /// Windows service management commands
     #[command(subcommand)]
     Service(ServiceCommands),
+    /// Network components WinLLDP uses (installed automatically when needed)
+    #[command(subcommand)]
+    Driver(DriverCommands),
     /// Internal: the capture process started by `capture start`
     #[command(hide = true)]
     CaptureSubprocess { log_file: String, neighbors_file: String, pid_file: String },
@@ -123,6 +126,16 @@ enum CaptureCommands {
         #[command(flatten)]
         verbose: Verbose,
     },
+}
+
+#[derive(Subcommand)]
+enum DriverCommands {
+    /// Show the state of XDP for Windows (sends LLDP) and Packet Monitor (captures LLDP)
+    Status,
+    /// Install the bundled XDP for Windows driver now (otherwise done on first use)
+    Install(Verbose),
+    /// Remove XDP for Windows, if WinLLDP installed it
+    Uninstall(Verbose),
 }
 
 #[derive(Subcommand)]
@@ -201,9 +214,6 @@ fn capture_status(env_file: &Option<String>, verbose: bool) -> Result<(), i32> {
         Some((pid, info)) => {
             println!("LLDP Capture Status: RUNNING");
             println!("  PID: {pid}");
-            if let Some(backend) = capture::running_backend(&config.log_file) {
-                println!("  Backend: {backend}");
-            }
             match info {
                 Some(info) => {
                     println!("  Uptime: {}", process::format_uptime(info.uptime));
@@ -445,6 +455,57 @@ fn clear_neighbors(env_file: &Option<String>) -> Result<(), i32> {
     }
 }
 
+fn driver_status() -> Result<(), i32> {
+    println!("XDP for Windows (sends LLDP): {}", if xdp::usable() { "available" } else { "not installed" });
+    match xdp::installed_by_winlldp() {
+        Some(version) => println!("  Installed by WinLLDP: yes (version {version})"),
+        None => println!("  Installed by WinLLDP: no"),
+    }
+    println!("  Bundled version: {}", xdp::XDP_VERSION);
+    println!(
+        "Packet Monitor (captures LLDP): {}",
+        if pktmon::api().is_ok() {
+            "available"
+        } else {
+            "not available (needs Windows 11 24H2+ or Windows Server 2025)"
+        }
+    );
+    println!("Administrator: {}", if xdp::is_admin() { "yes" } else { "no" });
+    Ok(())
+}
+
+fn driver_install(verbose: bool) -> Result<(), i32> {
+    setup_logging(verbose);
+    if xdp::usable() && xdp::installed_by_winlldp().is_none_or(|v| v == xdp::XDP_VERSION) {
+        println!("XDP for Windows is already available");
+        return Ok(());
+    }
+    match xdp::ensure_available() {
+        Ok(()) => {
+            println!("XDP for Windows {} installed", xdp::XDP_VERSION);
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Error installing XDP for Windows: {e}");
+            Err(1)
+        }
+    }
+}
+
+fn driver_uninstall(verbose: bool) -> Result<(), i32> {
+    setup_logging(verbose);
+    match xdp::uninstall() {
+        Ok(()) => {
+            println!("XDP for Windows removed");
+            Ok(())
+        }
+        Err(e) => {
+            eprintln!("Error removing XDP for Windows: {e}");
+            Err(1)
+        }
+    }
+}
+
 fn exit(code: i32) -> ExitCode {
     ExitCode::from(code.clamp(0, 255) as u8)
 }
@@ -501,6 +562,11 @@ fn main() -> ExitCode {
                 Err(code)
             }
         }
+        Commands::Driver(d) => match d {
+            DriverCommands::Status => driver_status(),
+            DriverCommands::Install(v) => driver_install(v.verbose),
+            DriverCommands::Uninstall(v) => driver_uninstall(v.verbose),
+        },
         Commands::CaptureSubprocess { log_file, neighbors_file, pid_file } => {
             let code =
                 capture::run_capture_process(Path::new(log_file), Path::new(neighbors_file), Path::new(pid_file));

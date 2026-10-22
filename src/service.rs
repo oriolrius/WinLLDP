@@ -26,13 +26,43 @@ fn decode(bytes: &[u8]) -> String {
 }
 
 /// Run a program; Err when it cannot be found (v1's FileNotFoundError)
-pub fn run(program: &str, args: &[&str]) -> Result<Output, std::io::Error> {
+pub fn run(program: impl AsRef<std::ffi::OsStr>, args: &[&str]) -> Result<Output, std::io::Error> {
     let out = Command::new(program).args(args).output()?;
     Ok(Output { code: out.status.code().unwrap_or(-1), stdout: decode(&out.stdout), stderr: decode(&out.stderr) })
 }
 
+/// NSSM (public domain) runs WinLLDP as a service; it is bundled, see vendor/nssm/
+const NSSM_VERSION: &str = "2.24-101-g897c7ad";
+const NSSM_EXE: &[u8] = include_bytes!("../vendor/nssm/2.24-101-g897c7ad/nssm.exe");
+
+fn nssm_dir() -> PathBuf {
+    paths::program_directory().join(format!("nssm-{NSSM_VERSION}"))
+}
+
+/// The bundled nssm.exe, extracted to %ProgramFiles%\WinLLDP (the service's image path points there)
+pub fn nssm_path() -> Result<PathBuf, std::io::Error> {
+    let path = nssm_dir().join("nssm.exe");
+    if std::fs::read(&path).ok().as_deref() != Some(NSSM_EXE) {
+        std::fs::create_dir_all(nssm_dir())?;
+        std::fs::write(&path, NSSM_EXE)?;
+    }
+    Ok(path)
+}
+
 fn nssm(args: &[&str]) -> Result<Output, std::io::Error> {
-    run("nssm", args)
+    // Only `install` (and `version`, its check) puts NSSM on disk: asking about a service that is
+    // not installed must not leave nssm.exe behind
+    let installing = matches!(args.first(), Some(&"install") | Some(&"version"));
+    if !installing && !nssm_dir().join("nssm.exe").exists() && sc_query().code != 0 {
+        return Ok(Output { code: 3, stdout: String::new(), stderr: "Can't open service!".into() });
+    }
+    run(nssm_path()?, args)
+}
+
+/// Remove the extracted NSSM once the service no longer uses it
+fn remove_bundled_nssm() {
+    let _ = std::fs::remove_dir_all(nssm_dir());
+    let _ = std::fs::remove_dir(paths::program_directory());
 }
 
 fn sc_query() -> Output {
@@ -43,10 +73,8 @@ fn state_lines(output: &str) -> impl Iterator<Item = &str> {
     output.lines().filter(|l| l.contains("STATE")).map(str::trim)
 }
 
-fn print_nssm_missing() {
-    eprintln!("Error: NSSM not found. Please install it first:");
-    println!("  winget install NSSM");
-    println!("Or download from https://nssm.cc/");
+fn print_nssm_missing(error: &std::io::Error) {
+    eprintln!("Error: cannot run the bundled NSSM ({error}): run winlldp as administrator");
 }
 
 fn flush() {
@@ -77,8 +105,12 @@ pub fn install(verbose: bool) -> i32 {
                 println!("NSSM version: {}", out.stdout.trim());
             }
         }
-        _ => {
-            print_nssm_missing();
+        Ok(out) => {
+            eprintln!("Error: the bundled NSSM does not run: {}", out.stderr.trim());
+            return 1;
+        }
+        Err(e) => {
+            print_nssm_missing(&e);
             return 1;
         }
     }
@@ -216,8 +248,8 @@ pub fn uninstall(verbose: bool) -> i32 {
         println!("Checking if service exists...");
     }
     match nssm(&["status", SERVICE_NAME]) {
-        Err(_) => {
-            eprintln!("Error: NSSM not found");
+        Err(e) => {
+            print_nssm_missing(&e);
             return 1;
         }
         Ok(out) if out.code != 0 => {
@@ -273,8 +305,8 @@ pub fn uninstall(verbose: bool) -> i32 {
     }
     let out = match nssm(&["remove", SERVICE_NAME, "confirm"]) {
         Ok(out) => out,
-        Err(_) => {
-            eprintln!("Error: NSSM not found");
+        Err(e) => {
+            print_nssm_missing(&e);
             return 1;
         }
     };
@@ -292,6 +324,15 @@ pub fn uninstall(verbose: bool) -> i32 {
         return 1;
     }
     println!("Service uninstalled successfully");
+    remove_bundled_nssm();
+    // The driver WinLLDP installed to send LLDP goes with the service
+    if crate::xdp::installed_by_winlldp().is_some() {
+        println!("Removing the XDP driver installed by WinLLDP...");
+        match crate::xdp::uninstall() {
+            Ok(()) => println!("XDP driver removed"),
+            Err(e) => eprintln!("Warning: {e}"),
+        }
+    }
     if verbose {
         println!("\nVerifying service removal...");
         if sc_query().code != 0 {
@@ -347,9 +388,8 @@ pub fn start(verbose: bool) -> i32 {
     }
     let out = match nssm(&["start", SERVICE_NAME]) {
         Ok(out) => out,
-        Err(_) => {
-            eprintln!("Error: NSSM not found. Please install the service first.");
-            println!("Run: winlldp service install");
+        Err(e) => {
+            print_nssm_missing(&e);
             return 1;
         }
     };
@@ -405,8 +445,8 @@ pub fn stop(verbose: bool) -> i32 {
     }
     let out = match nssm(&["stop", SERVICE_NAME]) {
         Ok(out) => out,
-        Err(_) => {
-            eprintln!("Error: NSSM not found");
+        Err(e) => {
+            print_nssm_missing(&e);
             return 1;
         }
     };
@@ -447,9 +487,8 @@ pub fn status(verbose: bool) -> i32 {
     }
     let out = match nssm(&["status", SERVICE_NAME]) {
         Ok(out) => out,
-        Err(_) => {
-            eprintln!("Error: NSSM not found. Please install it first:");
-            println!("  winget install NSSM");
+        Err(e) => {
+            print_nssm_missing(&e);
             return 1;
         }
     };
@@ -531,8 +570,8 @@ pub fn restart(verbose: bool) -> i32 {
     }
     let out = match nssm(&["restart", SERVICE_NAME]) {
         Ok(out) => out,
-        Err(_) => {
-            eprintln!("Error: NSSM not found");
+        Err(e) => {
+            print_nssm_missing(&e);
             return 1;
         }
     };

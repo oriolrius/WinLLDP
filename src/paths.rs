@@ -10,6 +10,16 @@ pub fn runtime_directory() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("."))
 }
 
+/// Where WinLLDP installs the components it bundles (XDP driver package, NSSM): %ProgramFiles%\WinLLDP.
+/// Only administrators can write there, which matters because the service runs them as SYSTEM.
+pub fn program_directory() -> PathBuf {
+    let base = std::env::var_os("ProgramW6432")
+        .or_else(|| std::env::var_os("ProgramFiles"))
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(r"C:\Program Files"));
+    base.join("WinLLDP")
+}
+
 pub fn neighbors_file() -> PathBuf {
     runtime_directory().join("neighbors.json")
 }

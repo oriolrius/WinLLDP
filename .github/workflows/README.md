@@ -5,7 +5,7 @@
 | `ci.yml` | push to `master`, pull requests | `cargo fmt --check`, `clippy -D warnings`, release build of `winlldp.exe`, all tests (unit and the integration tests that run the executable), uploads the exe as an artifact |
 | `release.yml` | push of a `v*` tag | checks the tag matches `Cargo.toml`, lints, builds and tests like CI, takes the release notes from `CHANGELOG.md` and publishes `winlldp-vX.Y.Z.exe` as a GitHub release |
 
-GitHub's Windows runners have no Npcap and no NSSM, so the capture and service tests skip there; the Npcap-missing path is tested instead. Run `just test` on a Windows machine with Npcap, NSSM and administrator rights to run them all.
+The runners are Windows Server 2025 with administrator rights: the tests install the bundled XDP driver, capture with Packet Monitor and run the service with the bundled NSSM; a second step runs the lifecycle tests one at a time.
 
 Dependabot (`../dependabot.yml`, read from the default branch) opens weekly grouped updates for the Cargo dependencies and actions on `master`, and for the uv lockfile and actions on `v1`.
 

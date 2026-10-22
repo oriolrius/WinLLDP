@@ -1,7 +1,7 @@
 //! Integration tests: run the real winlldp.exe from a temporary directory
 //! (ported from v1's tests/test_frozen_executable.py, plus the commands it did not cover)
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Output, Stdio};
 use std::time::{Duration, Instant};
 
@@ -13,19 +13,14 @@ fn built_exe() -> PathBuf {
     exe
 }
 
-fn npcap_installed() -> bool {
-    let root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".into());
-    let system32 = Path::new(&root).join("System32");
-    system32.join("Npcap").join("wpcap.dll").exists() || system32.join("wpcap.dll").exists()
-}
-
-/// Windows Packet Monitor API (Windows 11 24H2+ / Server 2025): capture without Npcap
+/// Windows Packet Monitor API (Windows 11 24H2+ / Server 2025): how WinLLDP captures
 fn packet_monitor_available() -> bool {
     winlldp::pktmon::api().is_ok()
 }
 
-fn capture_available() -> bool {
-    npcap_installed() || packet_monitor_available()
+/// Sending uses XDP for Windows, which WinLLDP installs itself: it needs administrator rights
+fn can_send() -> bool {
+    winlldp::xdp::is_admin()
 }
 
 fn is_admin() -> bool {
@@ -351,30 +346,16 @@ fn stale_pid_file_never_kills_another_program() {
 }
 
 #[test]
-fn capture_start_fails_without_npcap_or_packet_monitor() {
-    // Point Windows' directory somewhere without Npcap or PktMonApi.dll to simulate such a machine
-    let s = Sandbox::new("nonpcap");
+fn capture_start_fails_without_packet_monitor() {
+    // Point Windows' directory somewhere without PktMonApi.dll to simulate an older Windows
+    let s = Sandbox::new("nopktmon");
     let fake_root = s.path("FakeWindows");
     std::fs::create_dir_all(fake_root.join("System32")).unwrap();
-    let root = fake_root.to_str().unwrap();
-    let r = s.run_with(&["capture", "start"], &[("SystemRoot", root)]);
+    let r = s.run_with(&["capture", "start"], &[("SystemRoot", fake_root.to_str().unwrap())]);
     assert_ne!(r.code, 0);
-    assert!(r.stderr.contains("Npcap is not installed"), "{r:?}");
-    assert!(r.stderr.contains("Packet Monitor API is not available"), "{r:?}");
+    assert!(r.stderr.contains("needs the Windows Packet Monitor API"), "{r:?}");
+    assert!(r.stderr.contains("Windows 11 24H2"), "{r:?}");
     assert!(!r.stdout.contains("started successfully"));
-    assert!(!s.path("capture.pid").exists());
-    if !capture_available() {
-        let r = s.run(&["capture", "start"]);
-        assert!(r.code != 0 && r.stderr.contains("Npcap is not installed"), "{r:?}");
-    }
-
-    // A forced backend reports its own requirement
-    let r = s.run_with(&["capture", "start"], &[("SystemRoot", root), ("LLDP_CAPTURE_BACKEND", "npcap")]);
-    assert!(r.code != 0 && r.stderr.contains("Npcap is not installed; it is required"), "{r:?}");
-    let r = s.run_with(&["capture", "start"], &[("SystemRoot", root), ("LLDP_CAPTURE_BACKEND", "pktmon")]);
-    assert!(r.code != 0 && r.stderr.contains("needs Windows 11 24H2+ or Windows Server 2025"), "{r:?}");
-    let r = s.run_with(&["capture", "start"], &[("LLDP_CAPTURE_BACKEND", "wireshark")]);
-    assert!(r.code != 0 && r.stderr.contains("Invalid LLDP_CAPTURE_BACKEND 'wireshark'"), "{r:?}");
     assert!(!s.path("capture.pid").exists());
 }
 
@@ -384,7 +365,8 @@ fn send_command() {
     let r = s.run(&["send", "-v"]);
     assert!(r.stdout.contains("Configuration:\n  Interface: all\n  System Name: auto\n  TTL: 120"), "{r:?}");
     assert!(r.stdout.contains("Sending LLDP packets"), "{r:?}");
-    if npcap_installed() {
+    if can_send() {
+        // XDP is installed on the fly when missing
         assert_eq!(r.code, 0, "{r:?}");
         assert!(r.stdout.contains("LLDP packets sent successfully!"));
         if r.stdout.contains("Sending LLDP on ") {
@@ -393,9 +375,9 @@ fn send_command() {
             assert!(r.stdout.contains("    System Description: Windows 10.0."));
             assert!(r.stdout.contains("  Sent successfully!"));
         }
-    } else if r.stdout.contains("Sending LLDP on ") {
+    } else if r.stdout.contains("Sending LLDP on ") || r.code != 0 {
         assert_ne!(r.code, 0);
-        assert!(r.stderr.contains("Npcap is not installed"), "{r:?}");
+        assert!(r.stderr.contains("administrator"), "{r:?}");
     }
     let r = s.run(&["send", "-i", "No Such Interface"]);
     assert_eq!(r.code, 1);
@@ -403,9 +385,18 @@ fn send_command() {
 }
 
 #[test]
+fn driver_status_command() {
+    let r = Sandbox::new("driver").run(&["driver", "status"]);
+    assert_eq!(r.code, 0, "{r:?}");
+    for line in ["XDP for Windows (sends LLDP): ", "Bundled version: 1.4.0", "Packet Monitor (captures LLDP): "] {
+        assert!(r.stdout.contains(line), "{line} missing: {r:?}");
+    }
+}
+
+#[test]
 fn capture_files_live_in_exe_directory_not_temp() {
-    if !capture_available() {
-        eprintln!("skipped: neither Npcap nor the Packet Monitor API is available");
+    if !packet_monitor_available() {
+        eprintln!("skipped: the Packet Monitor API is not available");
         return;
     }
     let s = Sandbox::new("capture");
@@ -429,8 +420,6 @@ fn capture_files_live_in_exe_directory_not_temp() {
         r.stdout.contains("LLDP Capture Status: RUNNING") && r.stdout.contains("PID:") && r.stdout.contains("Memory:"),
         "{r:?}"
     );
-    let expected = if packet_monitor_available() { "Backend: Packet Monitor" } else { "Backend: Npcap" };
-    assert!(r.stdout.contains(expected), "{r:?}");
 
     let r = s.run(&["capture", "log", "-n", "0"]);
     assert!(r.stdout.contains("Starting packet capture on:") && r.stdout.contains("Capture backend: "), "{r:?}");
@@ -454,24 +443,28 @@ fn capture_files_live_in_exe_directory_not_temp() {
     assert!(s.run(&["capture", "status"]).stdout.contains("NOT RUNNING"));
 }
 
-/// Capture with `backend`, send our own LLDP (needs Npcap) and find ourselves as a neighbor
-fn own_lldp_becomes_a_neighbor(backend: &str, status_name: &str) {
-    let s = Sandbox::new(&format!("e2e-{backend}"));
-    let r = s.run_with(&["capture", "start"], &[("LLDP_CAPTURE_BACKEND", backend)]);
+/// Capture (Packet Monitor), send our own LLDP (XDP) and find ourselves as a neighbor
+#[test]
+fn captured_lldp_becomes_a_neighbor() {
+    if !packet_monitor_available() || !can_send() {
+        eprintln!("skipped: needs the Packet Monitor API and administrator rights");
+        return;
+    }
+    let s = Sandbox::new("e2e");
+    let r = s.run(&["capture", "start"]);
     assert_eq!(r.code, 0, "{r:?}");
-    let r = s.run(&["capture", "status"]);
-    assert!(r.stdout.contains(&format!("Backend: {status_name}")), "{r:?}");
     let sent = s.run(&["send", "-v"]);
+    assert_eq!(sent.code, 0, "{sent:?}");
     if !sent.stdout.contains("Sending LLDP on ") {
         eprintln!("skipped: no active interface to send on");
         return;
     }
-    // Both backends hand our own outgoing frames to the capture too
+    // Packet Monitor also reports the frames we send
     let found = wait_for(Duration::from_secs(10), || {
         std::fs::read_to_string(s.path("neighbors.json"))
             .is_ok_and(|t| t.contains("\"system_description\": \"Windows 10.0."))
     });
-    assert!(found, "{backend}: no neighbor recorded; log:\n{}", s.run(&["capture", "log", "-n", "40"]).stdout);
+    assert!(found, "no neighbor recorded; log:\n{}", s.run(&["capture", "log", "-n", "40"]).stdout);
     let neighbors: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(s.path("neighbors.json")).unwrap()).unwrap();
     // Other LLDP devices on the network (and Windows' own LLDP agent) may be recorded too: check ours
@@ -487,40 +480,54 @@ fn own_lldp_becomes_a_neighbor(backend: &str, status_name: &str) {
     assert_eq!(n["data"]["chassis_id_subtype"], "MAC_ADDRESS");
     assert_eq!(n["data"]["ttl"], 120);
     assert_eq!(n["data"]["system_capabilities"], 128);
-    // The neighbor is recorded on the interface it was sent from
+    // The neighbor is recorded on the interface it was sent from (not on a Hyper-V uplink NIC)
     let interfaces = s.run(&["show-interfaces"]).stdout;
     assert!(interfaces.contains(n["interface"].as_str().unwrap()), "{n}");
     let r = s.run(&["show-neighbors"]);
     assert!(r.stdout.contains("Ethernet Port") && r.stdout.contains("Total neighbors:"), "{r:?}");
 }
 
+/// Remove XDP (if WinLLDP installed it) and let `send` install it again.
+/// Ignored by default: it changes what the other tests use; run with `-- --ignored --test-threads=1`
 #[test]
-fn captured_lldp_becomes_a_neighbor_with_packet_monitor() {
-    if !packet_monitor_available() || !npcap_installed() {
-        eprintln!("skipped: needs the Packet Monitor API, and Npcap to send");
+#[ignore]
+fn driver_install_is_transparent() {
+    if !can_send() {
+        eprintln!("skipped: needs administrator rights");
         return;
     }
-    own_lldp_becomes_a_neighbor("pktmon", "Packet Monitor");
-}
-
-#[test]
-fn captured_lldp_becomes_a_neighbor_with_npcap() {
-    if !npcap_installed() {
-        eprintln!("skipped: Npcap is not installed");
+    let s = Sandbox::new("drivers");
+    let status = s.run(&["driver", "status"]).stdout;
+    if status.contains("(sends LLDP): available") && status.contains("Installed by WinLLDP: no") {
+        eprintln!("skipped: XDP for Windows was installed by something else; leaving it alone");
         return;
     }
-    own_lldp_becomes_a_neighbor("npcap", "Npcap");
+    if status.contains("Installed by WinLLDP: yes") {
+        let r = s.run(&["driver", "uninstall"]);
+        assert_eq!(r.code, 0, "{r:?}");
+        assert!(s.run(&["driver", "status"]).stdout.contains("(sends LLDP): not installed"));
+    }
+    // No setup step: sending installs the bundled driver
+    let r = s.run(&["send"]);
+    assert_eq!(r.code, 0, "{r:?}");
+    let status = s.run(&["driver", "status"]).stdout;
+    assert!(status.contains("(sends LLDP): available") && status.contains("Installed by WinLLDP: yes (version 1.4.0)"));
+    let r = s.run(&["driver", "install"]);
+    assert!(r.stdout.contains("already available"), "{r:?}");
 }
 
 fn sc_query() -> String {
     String::from_utf8_lossy(&Command::new("sc").args(["query", "WinLLDP"]).output().unwrap().stdout).into_owned()
 }
 
+/// Ignored by default: `service uninstall` also removes the XDP driver WinLLDP installed, which
+/// the other tests use; run with `-- --ignored --test-threads=1`
 #[test]
+#[ignore]
 fn service_lifecycle() {
-    let nssm = Command::new("nssm").arg("version").output().is_ok_and(|o| o.status.success());
-    if !is_admin() || !nssm {
-        eprintln!("skipped: needs administrator privileges and NSSM");
+    // NSSM is bundled in winlldp.exe: only administrator rights are needed
+    if !is_admin() {
+        eprintln!("skipped: needs administrator privileges");
         return;
     }
     if Command::new("sc").args(["query", "WinLLDP"]).output().unwrap().status.success() {
@@ -536,14 +543,20 @@ fn service_lifecycle() {
     assert!(r.stdout.contains("Service installed successfully!") && r.stdout.contains("Command: service-run"), "{r:?}");
 
     let cleanup = || {
-        let _ = Command::new("nssm").args(["stop", "WinLLDP"]).output();
-        let _ = Command::new("nssm").args(["remove", "WinLLDP", "confirm"]).output();
+        let _ = Command::new("sc").args(["stop", "WinLLDP"]).output();
+        let _ = Command::new("sc").args(["delete", "WinLLDP"]).output();
     };
     let result = std::panic::catch_unwind(|| {
         let get = |p: &str| {
-            String::from_utf8_lossy(&Command::new("nssm").args(["get", "WinLLDP", p]).output().unwrap().stdout)
-                .trim()
-                .to_string()
+            String::from_utf8_lossy(
+                &Command::new(winlldp::service::nssm_path().unwrap())
+                    .args(["get", "WinLLDP", p])
+                    .output()
+                    .unwrap()
+                    .stdout,
+            )
+            .trim()
+            .to_string()
         };
         assert_eq!(get("AppParameters"), "service-run");
         assert_eq!(get("AppDirectory"), s.dir.display().to_string());
@@ -561,12 +574,12 @@ fn service_lifecycle() {
         assert!(wait_for(Duration::from_secs(15), || std::fs::read_to_string(s.path("nssm_service.log"))
             .is_ok_and(|l| l.contains("Service started successfully"))));
         let log = std::fs::read_to_string(s.path("nssm_service.log")).unwrap();
-        if capture_available() {
+        if packet_monitor_available() {
             assert!(log.contains("Capture started successfully"), "{log}");
             assert!(s.run(&["capture", "status"]).stdout.contains("RUNNING"));
         } else {
-            // Without a capture backend the service keeps running and says why there is no capture
-            assert!(log.contains("WARNING: Failed to start capture subprocess: Npcap is not installed"), "{log}");
+            // Without Packet Monitor the service keeps running and says why there is no capture
+            assert!(log.contains("WARNING: Failed to start capture subprocess: Capturing LLDP needs"), "{log}");
         }
         let r = s.run(&["service", "status", "-v"]);
         assert!(r.stdout.contains("SERVICE_RUNNING") && r.stdout.contains("The service is running"), "{r:?}");
@@ -604,6 +617,11 @@ fn service_lifecycle() {
                 && r.stdout.contains("Service successfully removed from Windows"),
             "{r:?}"
         );
+        // The XDP driver goes with the service when WinLLDP installed it
+        if r.stdout.contains("Removing the XDP driver installed by WinLLDP") {
+            assert!(r.stdout.contains("XDP driver removed"), "{r:?}");
+            assert!(s.run(&["driver", "status"]).stdout.contains("(sends LLDP): not installed"));
+        }
         let r = s.run(&["service", "status"]);
         assert!(r.stdout.contains("Service WinLLDP not found"), "{r:?}");
     });

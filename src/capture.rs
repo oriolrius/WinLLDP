@@ -2,8 +2,7 @@
 //! and the commands that start, stop and inspect it
 
 use crate::config::Config;
-use crate::packet::{format_mac, LldpPacket};
-use crate::pcap::{self, Handle, Next};
+use crate::packet::{format_mac, LldpPacket, LLDP_ETHERTYPE};
 use crate::pktmon;
 use crate::process::{self, ProcessInfo};
 use crate::sysinfo::{self, Interface};
@@ -16,74 +15,13 @@ use std::process::{Command, Stdio};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
-pub const CAPTURE_FILTER: &str = "ether proto 0x88cc";
-
-/// LLDP_CAPTURE_BACKEND: `auto` (default: Packet Monitor, else Npcap), `pktmon` or `npcap`
-pub const BACKEND_VARIABLE: &str = "LLDP_CAPTURE_BACKEND";
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Backend {
-    PacketMonitor,
-    Npcap,
-}
-
-impl Backend {
-    pub fn name(self) -> &'static str {
-        match self {
-            Backend::PacketMonitor => "Packet Monitor",
-            Backend::Npcap => "Npcap",
-        }
-    }
-
-    fn available(self) -> bool {
-        match self {
-            Backend::PacketMonitor => pktmon::api().is_ok(),
-            Backend::Npcap => sysinfo::npcap_installed(),
-        }
-    }
-}
-
-/// Backends to try, in order, according to LLDP_CAPTURE_BACKEND
-pub fn backend_order(setting: Option<&str>) -> Result<Vec<Backend>, String> {
-    match setting.map(|s| s.trim().to_lowercase()).as_deref() {
-        None | Some("") | Some("auto") => Ok(vec![Backend::PacketMonitor, Backend::Npcap]),
-        Some("pktmon") | Some("packetmonitor") => Ok(vec![Backend::PacketMonitor]),
-        Some("npcap") => Ok(vec![Backend::Npcap]),
-        Some(other) => Err(format!("Invalid {BACKEND_VARIABLE} '{other}' (use auto, pktmon or npcap)")),
-    }
-}
-
-fn configured_backends() -> Result<Vec<Backend>, String> {
-    backend_order(std::env::var(BACKEND_VARIABLE).ok().as_deref())
-}
-
-/// Why no capture backend can be used here, if none can
+/// Why LLDP cannot be captured here, if it cannot
 pub fn capture_unavailable_reason() -> Option<String> {
-    let backends = match configured_backends() {
-        Ok(backends) => backends,
-        Err(e) => return Some(e),
-    };
-    if backends.iter().any(|b| b.available()) {
-        return None;
-    }
-    Some(match backends.as_slice() {
-        [Backend::Npcap] => sysinfo::npcap_missing_message(),
-        [Backend::PacketMonitor] => {
-            "The Windows Packet Monitor API is not available (it needs Windows 11 24H2+ or Windows Server 2025)".into()
-        }
-        _ => format!(
-            "Npcap is not installed and the Windows Packet Monitor API is not available (it needs Windows 11 \
-             24H2+ or Windows Server 2025); one of them is required for packet capture. Install Npcap from {}",
-            sysinfo::NPCAP_URL
-        ),
+    pktmon::api().err().map(|_| {
+        "Capturing LLDP needs the Windows Packet Monitor API, available on Windows 11 24H2 or later and \
+         Windows Server 2025 or later"
+            .to_string()
     })
-}
-
-/// The backend recorded in the capture log by the running capture process
-pub fn running_backend(log_file: &Path) -> Option<String> {
-    let text = std::fs::read_to_string(log_file).ok()?;
-    let line = text.lines().rev().find(|l| l.contains("Capture backend: "))?;
-    Some(line.split("Capture backend: ").nth(1)?.trim().to_string())
 }
 
 pub fn now_iso() -> String {
@@ -248,7 +186,7 @@ pub fn update_neighbors(
 }
 
 fn process_frame(frame: &[u8], interface: &str, neighbors_file: &Path, log: &CaptureLog) {
-    if frame.len() < 14 || u16::from_be_bytes([frame[12], frame[13]]) != pcap::LLDP_ETHERTYPE {
+    if frame.len() < 14 || u16::from_be_bytes([frame[12], frame[13]]) != LLDP_ETHERTYPE {
         return;
     }
     let source_mac = format_mac(&frame[6..12]);
@@ -279,7 +217,7 @@ fn process_frame(frame: &[u8], interface: &str, neighbors_file: &Path, log: &Cap
     }
 }
 
-/// What the backends hand to the consumer
+/// What the Packet Monitor callbacks hand to the consumer
 pub enum CaptureEvent {
     Frame { interface: String, frame: Vec<u8> },
     Stopped(String),
@@ -305,7 +243,7 @@ impl Deduplicator {
     }
 }
 
-/// Shared by the backends: PID file, logging and the neighbors.json updates
+/// PID file, logging and the neighbors.json updates
 struct CaptureContext<'a> {
     log: CaptureLog,
     neighbors_file: &'a Path,
@@ -313,19 +251,19 @@ struct CaptureContext<'a> {
 }
 
 impl CaptureContext<'_> {
-    /// Called once a backend is capturing: `capture start` waits for the PID file
-    fn started(&self, backend: Backend, interfaces: &[String]) -> Result<(), String> {
+    /// Called once capturing: `capture start` waits for the PID file
+    fn started(&self, interfaces: &[String]) -> Result<(), String> {
         self.log.file_op("OPEN", self.pid_file, "w");
         std::fs::write(self.pid_file, std::process::id().to_string())
             .map_err(|e| format!("Cannot write the PID file {}: {e}", self.pid_file.display()))?;
         self.log.file_op("CLOSE", self.pid_file, "");
         self.log.log("PID file written");
-        self.log.log(&format!("Capture backend: {}", backend.name()));
+        self.log.log("Capture backend: Packet Monitor");
         self.log.log(&format!("Starting packet capture on: {}", interfaces.join(", ")));
         Ok(())
     }
 
-    /// Process frames until the backend stops; returns the exit code
+    /// Process frames until the capture stops; returns the exit code
     fn consume(&self, events: Receiver<CaptureEvent>) -> i32 {
         let mut dedup = Deduplicator::default();
         for event in events {
@@ -343,55 +281,6 @@ impl CaptureContext<'_> {
         }
         0
     }
-}
-
-/// Npcap: one handle per active interface, each read by its own thread
-fn run_npcap(ctx: &CaptureContext, interfaces: &[Interface]) -> Result<i32, String> {
-    ctx.log.log("Loading Npcap...");
-    let pcap = pcap::pcap()?;
-    ctx.log.log(&format!("Npcap loaded: {}", pcap.version()));
-
-    let mut handles = Vec::new();
-    let mut errors = Vec::new();
-    for iface in interfaces {
-        let opened = Handle::open(&iface.npcap_device(), true, 1000).and_then(|mut h| {
-            h.set_filter(CAPTURE_FILTER)?;
-            Ok(h)
-        });
-        match opened {
-            Ok(h) => handles.push((iface.name.clone(), h)),
-            Err(e) => {
-                ctx.log.log(&format!("Cannot capture on {}: {e}", iface.name));
-                errors.push(format!("{}: {e}", iface.name));
-            }
-        }
-    }
-    if handles.is_empty() {
-        return Err(format!("Cannot capture on any interface ({})", errors.join("; ")));
-    }
-    let names: Vec<String> = handles.iter().map(|(n, _)| n.clone()).collect();
-    ctx.started(Backend::Npcap, &names)?;
-
-    let (tx, rx) = mpsc::channel();
-    for (name, mut handle) in handles {
-        let (tx, log) = (tx.clone(), ctx.log.clone());
-        std::thread::spawn(move || loop {
-            match handle.next_packet() {
-                Ok(Next::Packet(frame)) => {
-                    if tx.send(CaptureEvent::Frame { interface: name.clone(), frame }).is_err() {
-                        break;
-                    }
-                }
-                Ok(Next::Timeout) => {}
-                Err(e) => {
-                    log.log(&format!("Capture error on {name}: {e}"));
-                    break;
-                }
-            }
-        });
-    }
-    drop(tx);
-    Ok(ctx.consume(rx))
 }
 
 /// Passed to the Packet Monitor callbacks as their context
@@ -424,7 +313,14 @@ fn run_pktmon(ctx: &CaptureContext, interfaces: &[Interface]) -> Result<i32, Str
     let monitor = pktmon::PacketMonitor::new()?;
     let all: Vec<pktmon::SourceInfo> =
         monitor.data_sources(pktmon::DATA_SOURCE_KIND_ALL, true)?.iter().map(pktmon::SourceInfo::from).collect();
-    let targets: Vec<(String, String)> = interfaces.iter().map(|i| (i.name.clone(), i.description.clone())).collect();
+    let targets: Vec<pktmon::Target> = interfaces
+        .iter()
+        .map(|i| pktmon::Target {
+            name: i.name.clone(),
+            description: i.description.clone(),
+            mac: i.mac.as_deref().and_then(sysinfo::mac_to_bytes).unwrap_or_default(),
+        })
+        .collect();
     let components = pktmon::component_interfaces(&all, &targets);
 
     let mut session = monitor.session("WinLLDP")?;
@@ -440,7 +336,7 @@ fn run_pktmon(ctx: &CaptureContext, interfaces: &[Interface]) -> Result<i32, Str
     if names.is_empty() {
         return Err("Packet Monitor does not see any of the active interfaces".into());
     }
-    session.add_constraint(&pktmon::ProtocolConstraint::ether_type("LLDP", pcap::LLDP_ETHERTYPE))?;
+    session.add_constraint(&pktmon::ProtocolConstraint::ether_type("LLDP", LLDP_ETHERTYPE))?;
 
     let (tx, rx) = mpsc::channel();
     // Lives as long as the session (the callbacks use it until the stream is closed)
@@ -455,7 +351,7 @@ fn run_pktmon(ctx: &CaptureContext, interfaces: &[Interface]) -> Result<i32, Str
     session.attach_stream(&config)?;
     session.set_active(true)?;
     names.sort_by_key(|n| interfaces.iter().position(|i| &i.name == n));
-    ctx.started(Backend::PacketMonitor, &names)?;
+    ctx.started(&names)?;
     let code = ctx.consume(rx);
     drop(session);
     drop(context);
@@ -478,13 +374,6 @@ pub fn run_capture_process(log_file: &Path, neighbors_file: &Path, pid_file: &Pa
     log.log(&format!("PID file will be: {}", pid_file.display()));
 
     let code = (|| {
-        let backends = match configured_backends() {
-            Ok(backends) => backends,
-            Err(e) => {
-                fatal(&e);
-                return 1;
-            }
-        };
         log.log("Getting network interfaces...");
         let interfaces: Vec<Interface> =
             sysinfo::interfaces().into_iter().filter(|i| i.is_up && i.mac.is_some()).collect();
@@ -496,26 +385,13 @@ pub fn run_capture_process(log_file: &Path, neighbors_file: &Path, pid_file: &Pa
             return 1;
         }
 
-        let mut errors = Vec::new();
-        for backend in backends {
-            let result = match backend {
-                Backend::PacketMonitor => run_pktmon(&ctx, &interfaces),
-                Backend::Npcap => run_npcap(&ctx, &interfaces),
-            };
-            match result {
-                Ok(code) => return code,
-                Err(e) => {
-                    log.log(&format!("{} unavailable: {e}", backend.name()));
-                    errors.push((backend, e));
-                }
+        match run_pktmon(&ctx, &interfaces) {
+            Ok(code) => code,
+            Err(e) => {
+                fatal(&e);
+                1
             }
         }
-        let message = match errors.as_slice() {
-            [(_, e)] => e.clone(),
-            _ => errors.iter().map(|(b, e)| format!("{}: {e}", b.name())).collect::<Vec<_>>().join("; "),
-        };
-        fatal(&message);
-        1
     })();
 
     if read_pid(pid_file) == Some(std::process::id()) {
@@ -567,16 +443,6 @@ mod tests {
     }
 
     #[test]
-    fn backend_selection() {
-        let both = vec![Backend::PacketMonitor, Backend::Npcap];
-        assert_eq!(backend_order(None), Ok(both.clone()));
-        assert_eq!(backend_order(Some(" Auto ")), Ok(both));
-        assert_eq!(backend_order(Some("pktmon")), Ok(vec![Backend::PacketMonitor]));
-        assert_eq!(backend_order(Some("NPCAP")), Ok(vec![Backend::Npcap]));
-        assert!(backend_order(Some("wireshark")).unwrap_err().contains("LLDP_CAPTURE_BACKEND"));
-    }
-
-    #[test]
     fn duplicate_reports_are_dropped_within_a_second() {
         let mut d = Deduplicator::default();
         let t0 = Instant::now();
@@ -585,18 +451,6 @@ mod tests {
         assert!(d.is_new(t0 + Duration::from_millis(10), "WiFi", b"frame"));
         assert!(d.is_new(t0 + Duration::from_millis(20), "Ethernet", b"other"));
         assert!(d.is_new(t0 + Duration::from_millis(1500), "Ethernet", b"frame"));
-    }
-
-    #[test]
-    fn running_backend_is_read_from_the_log() {
-        let dir = std::env::temp_dir().join(format!("winlldp-backend-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let file = dir.join("log.txt");
-        assert_eq!(running_backend(&file), None);
-        std::fs::write(&file, "[t] Capture backend: Npcap\n[t] x\n[t] Capture backend: Packet Monitor\n[t] y\n")
-            .unwrap();
-        assert_eq!(running_backend(&file).as_deref(), Some("Packet Monitor"));
-        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
@@ -612,8 +466,8 @@ mod tests {
         p.add_chassis_id(4, &[1, 2, 3, 4, 5, 6]);
         p.add_ttl(90);
         p.add_end_of_lldpdu();
-        let frame = pcap::ethernet_frame(
-            &pcap::LLDP_MULTICAST_MAC,
+        let frame = crate::packet::ethernet_frame(
+            &crate::packet::LLDP_MULTICAST_MAC,
             &[0xa, 0xb, 0xc, 0xd, 0xe, 0xf],
             0x88cc,
             &p.encode().unwrap(),

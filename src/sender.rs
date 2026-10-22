@@ -1,10 +1,9 @@
-//! LLDP transmission: builds the LLDPDU of each interface and sends it
+//! LLDP transmission: builds the LLDPDU of each interface and sends it through XDP
 
 use crate::config::Config;
-use crate::packet::{self, LldpPacket};
-use crate::pcap::{self, Handle};
-use crate::sysinfo::{self, Interface};
-use crate::{logger, VERSION};
+use crate::packet::{self, ethernet_frame, LldpPacket, LLDP_ETHERTYPE, LLDP_MULTICAST_MAC};
+use crate::sysinfo::{self, Adapter, Interface};
+use crate::{logger, xdp, VERSION};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
@@ -86,7 +85,7 @@ fn hex(bytes: &[u8]) -> String {
 
 fn print_packet(iface: &Interface, mac: &str, data: &[u8]) {
     println!("Sending LLDP on {} ({mac})", iface.name);
-    println!("  Destination: {}", packet::format_mac(&pcap::LLDP_MULTICAST_MAC));
+    println!("  Destination: {}", packet::format_mac(&LLDP_MULTICAST_MAC));
     println!("  Packet size: {} bytes", data.len());
     println!("  Raw LLDP data: {}", hex(data));
     let info = LldpPacket::decode(data).to_dict();
@@ -105,11 +104,13 @@ fn print_packet(iface: &Interface, mac: &str, data: &[u8]) {
     println!();
 }
 
-/// Send the LLDPDU on one interface (skipped when it is down or has no MAC)
+/// Send the LLDPDU on one interface (skipped when it is down or has no MAC). `adapters` (every
+/// adapter, from GetIfTable2) tells whether a physical NIC behind a Hyper-V switch must carry it.
 pub fn send_on_interface(
     config: &Config,
     local: &LocalSystem,
     iface: &Interface,
+    adapters: &[Adapter],
     verbose: bool,
 ) -> Result<bool, String> {
     let Some(mac) = iface.mac.as_deref().filter(|_| iface.is_up) else {
@@ -118,12 +119,19 @@ pub fn send_on_interface(
     let result = (|| {
         let src = sysinfo::mac_to_bytes(mac).filter(|m| m.len() == 6).ok_or(format!("invalid MAC address {mac}"))?;
         let data = create_lldp_packet(config, local, iface, false)?;
+        let uplink = sysinfo::uplink_adapter(iface, adapters);
         if verbose {
             print_packet(iface, mac, &data);
+            if let Some(adapter) = uplink {
+                println!(
+                    "  Transmit adapter: {} (ifIndex {}, behind the Hyper-V switch)",
+                    adapter.alias, adapter.index
+                );
+            }
         }
-        let frame = pcap::ethernet_frame(&pcap::LLDP_MULTICAST_MAC, &src, pcap::LLDP_ETHERTYPE, &data);
-        let mut handle = Handle::open(&iface.npcap_device(), false, 100)?;
-        handle.send(&frame)?;
+        let frame = ethernet_frame(&LLDP_MULTICAST_MAC, &src, LLDP_ETHERTYPE, &data);
+        let mut socket = xdp::Socket::open(uplink.map_or(iface.if_index, |a| a.index))?;
+        socket.send(&frame)?;
         if verbose {
             println!(".\nSent 1 packets.");
             println!("  Sent successfully!");
@@ -160,8 +168,18 @@ pub fn send_lldp(config: &Config, verbose: bool) -> SendReport {
             }
         }
     };
+    if targets.iter().any(|i| i.is_up && i.mac.is_some()) {
+        // XDP is installed transparently the first time it is needed
+        if let Err(e) = xdp::ensure_available() {
+            let message = format!("Cannot send LLDP: {e}");
+            logger::error(&message);
+            report.errors.push(message);
+            return report;
+        }
+    }
+    let adapters = sysinfo::adapters();
     for iface in &targets {
-        match send_on_interface(config, &local, iface, verbose) {
+        match send_on_interface(config, &local, iface, &adapters, verbose) {
             Ok(true) => report.sent += 1,
             Ok(false) => {}
             Err(e) => report.errors.push(e),
@@ -274,6 +292,6 @@ mod tests {
     #[test]
     fn down_interfaces_are_skipped() {
         let down = Interface { is_up: false, ..iface() };
-        assert_eq!(send_on_interface(&config(&[]), &local(), &down, false), Ok(false));
+        assert_eq!(send_on_interface(&config(&[]), &local(), &down, &[], false), Ok(false));
     }
 }

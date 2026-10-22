@@ -24,10 +24,11 @@ lint:
     cargo fmt --check
     cargo clippy --target {{target}} --all-targets -- -D warnings
 
-# every test: unit tests and the integration tests that run winlldp.exe
-# (capture tests need Npcap; service tests need administrator rights and NSSM)
+# every test: unit tests and the integration tests that run winlldp.exe, then, one at a time,
+# those that remove/reinstall the XDP driver (administrator rights; the service test needs NSSM)
 test:
     cargo test --target {{target}}
+    cargo test --target {{target}} --test cli -- --ignored --test-threads=1
 
 # preview the next release (version + changelog) from the commit messages
 bump-dry-run:

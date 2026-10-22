@@ -269,9 +269,38 @@ pub fn is_ipv4(address: &str) -> bool {
     address.parse::<Ipv4Addr>().is_ok()
 }
 
+pub const LLDP_MULTICAST_MAC: [u8; 6] = [0x01, 0x80, 0xc2, 0x00, 0x00, 0x0e];
+pub const LLDP_ETHERTYPE: u16 = 0x88cc;
+
+/// Ethernet II frame, padded to the 60-byte minimum
+pub fn ethernet_frame(dst: &[u8; 6], src: &[u8], ethertype: u16, payload: &[u8]) -> Vec<u8> {
+    let mut frame = Vec::with_capacity(14 + payload.len().max(46));
+    frame.extend_from_slice(dst);
+    frame.extend_from_slice(src);
+    frame.extend_from_slice(&ethertype.to_be_bytes());
+    frame.extend_from_slice(payload);
+    if frame.len() < 60 {
+        frame.resize(60, 0);
+    }
+    frame
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn frame_layout_and_padding() {
+        let src = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+        let frame = ethernet_frame(&LLDP_MULTICAST_MAC, &src, LLDP_ETHERTYPE, &[1, 2, 3]);
+        assert_eq!(frame.len(), 60);
+        assert_eq!(&frame[0..6], &LLDP_MULTICAST_MAC);
+        assert_eq!(&frame[6..12], &src);
+        assert_eq!(&frame[12..14], &[0x88, 0xcc]);
+        assert_eq!(&frame[14..17], &[1, 2, 3]);
+        let big = ethernet_frame(&LLDP_MULTICAST_MAC, &src, LLDP_ETHERTYPE, &[0; 100]);
+        assert_eq!(big.len(), 114);
+    }
 
     fn sample_packet() -> LldpPacket {
         let mut p = LldpPacket::new();
