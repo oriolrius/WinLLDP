@@ -1,0 +1,6 @@
+# Same toolchain locally (WSL cross-compiling with mingw) and in CI (MSVC on Windows runners)
+[toolchain]
+channel = "1.99.1"
+components = ["clippy", "rustfmt"]
+targets = ["x86_64-pc-windows-msvc", "x86_64-pc-windows-gnu"]
+profile = "minimal"
