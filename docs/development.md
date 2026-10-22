@@ -1,240 +1,81 @@
-# WinLLDP Development Guide
+# WinLLDP Development Guide (v2, Rust)
 
 This guide is for developers who want to build WinLLDP from source or contribute to the project.
+The Python v1.x line is maintained separately (see [Release lines](#release-lines)).
 
-## Development Setup
+## Prerequisites
 
-### Prerequisites
+- Rust stable (see `rust-version` in `Cargo.toml`), with `clippy` and `rustfmt`
+- [just](install_just.md)
+- To run every test: Windows with [Npcap](https://npcap.com/), [NSSM](https://nssm.cc/) and administrator rights
 
-- Windows 10/11 or Windows Server
-- Python 3.11+
-- Git
-- Administrator privileges (for testing)
+Two ways to build:
 
-### Clone and Setup
+- **On Windows**: install Rust with `winget install Rustlang.Rustup`; `just` builds for `x86_64-pc-windows-msvc`.
+- **From WSL/Linux**: `rustup target add x86_64-pc-windows-gnu` and `sudo apt install mingw-w64`; `just` cross-compiles for `x86_64-pc-windows-gnu`, and `cargo test` runs the Windows test binaries through WSL interop.
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/oriolrius/WinLLDP.git
-   cd WinLLDP
-   ```
+Keep the build directory out of synced folders (OneDrive) with `export CARGO_TARGET_DIR=~/.cache/winlldp-target`.
 
-2. **Install uv package manager**:
-   ```powershell
-   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-   ```
-
-3. **Install dependencies**:
-   ```bash
-   uv sync
-   ```
-
-4. **Copy configuration**:
-   ```bash
-   copy env.example .env
-   ```
-
-### Running from Source
+## Common tasks
 
 ```bash
-# Run CLI commands
-uv run winlldp --help
-uv run winlldp send -v
-uv run winlldp capture start
-
-# Or activate venv and run directly
-.venv\Scripts\activate
-winlldp --help
+just build    # release build, copied to dist/winlldp.exe
+just lint     # cargo fmt --check + clippy -D warnings
+just test     # unit tests + integration tests that run winlldp.exe
+just bump-dry-run
 ```
 
-## Building the Executable
-
-### Using Just (Recommended)
-
-```bash
-# Build the executable
-just pyinstaller
-
-# The executable will be in dist/winlldp.exe
-```
-
-### Manual Build
-
-```bash
-# Using uv
-uv run pyinstaller --clean pyinstaller.spec
-
-# Or with activated venv
-.venv\Scripts\activate
-pyinstaller --clean pyinstaller.spec
-```
-
-## Project Structure
+## Project structure
 
 ```
-winlldp/
-├── winlldp/                    # Main Python package
-│   ├── __init__.py            # Package init with version
-│   ├── cli.py                 # CLI commands using Click
-│   ├── config.py              # Configuration management
-│   ├── lldp_packet.py         # LLDP packet construction/parsing
-│   ├── lldp_receiver.py       # Packet capture and neighbor discovery
-│   ├── lldp_sender.py         # LLDP packet transmission
-│   ├── logger.py              # Logging functionality
-│   ├── paths.py               # Centralized path resolution
-│   ├── service_wrapper.py     # Windows service integration
-│   └── system_info.py         # System information gathering
-├── tests/                     # Test suite
-│   ├── test_paths.py          # Path resolution tests
-│   ├── test_frozen_executable.py  # Integration tests
-│   └── README.md              # Test documentation
-├── docs/                      # Documentation
-├── dist/                      # Built executables (git ignored)
-├── pyproject.toml            # Project configuration
-├── pyinstaller.spec          # PyInstaller build spec
-├── Justfile                  # Build automation
-└── env.example               # Example configuration
+src/
+├── main.rs      # CLI (clap): every command and option of v1
+├── lib.rs       # module list, VERSION, py_str()
+├── config.rs    # LLDP_* settings: environment → .env → defaults, validation
+├── dotenv.rs    # .env parser compatible with python-dotenv
+├── paths.rs     # runtime files live next to the executable
+├── packet.rs    # LLDPDU TLV encoding/decoding, to_dict() (neighbors.json fields)
+├── sender.rs    # builds each interface's LLDPDU and sends it
+├── capture.rs   # capture process (capture-subprocess) and capture start/stop/status
+├── pcap.rs      # Npcap's wpcap.dll loaded at run time: send, filter, capture
+├── sysinfo.rs   # interfaces (GetAdaptersAddresses), hostname, Windows version/edition
+├── process.rs   # PID checks, uptime/memory/CPU for capture status
+├── service.rs   # NSSM service commands and the service process (service-run)
+├── table.rs     # tabulate-style grid tables
+├── logger.rs    # %TEMP%\winlldp_service.log + console
+└── fsdebug.rs   # verbose file-operation tracing
+tests/cli.rs     # integration tests against the real winlldp.exe
 ```
 
-## Key Components
-
-### Configuration System
-
-- **Priority**: Environment variables → .env file → defaults
-- **Path Resolution**: All files stored in exe directory when frozen
-- **Auto Values**: `auto` for system name and management IP
-
-### LLDP Implementation
-
-- **IEEE 802.1AB compliant** packet format
-- **Multicast address**: 01:80:c2:00:00:0e
-- **TLV support**: All mandatory and many optional TLVs
-
-### Service Architecture
+## Architecture
 
 ```
-Windows Service (NSSM)
-    └── service_wrapper.py
-        ├── LLDPSender (thread) - Sends packets periodically
-        └── LLDPReceiver (subprocess) - Captures packets
+Windows Service (NSSM) → winlldp.exe service-run
+    ├── sender thread: LLDP on every active interface every LLDP_INTERVAL seconds
+    └── winlldp.exe capture-subprocess (detached): one Npcap handle per active
+        interface, filter "ether proto 0x88cc", writes neighbors.json
 ```
+
+`capture start` spawns the same capture process and waits until it has written `capture.pid`
+(written once the Npcap handles are open), so failures are reported to the caller.
 
 ## Testing
 
-### Run All Tests
+- Unit tests sit next to the code (`#[cfg(test)]`); `packet.rs` checks the exact bytes v1 sends.
+- `tests/cli.rs` copies `winlldp.exe` to a temporary directory and runs it, like v1's
+  `test_frozen_executable.py`. Capture tests skip without Npcap; the service test skips without
+  administrator rights or NSSM, and when a `WinLLDP` service is already installed.
 
-```bash
-# With uv
-uv run python -m pytest tests/ -v
+## Release lines
 
-# Or with activated venv
-python -m pytest tests/ -v
-```
+- **v2.x (Rust)**: this code. `uvx --from commitizen cz bump` bumps `Cargo.toml`/`Cargo.lock` and
+  `CHANGELOG.md`, commits and tags `vX.Y.Z`; `git push --follow-tags` runs `release.yml`.
+- **v1.x (Python)**: the `v1` maintenance line (pyproject + uv + commitizen), for security and bug fixes.
 
-### Test Frozen Executable
-
-```bash
-# Build and test the executable
-python tests/run_frozen_tests.py
-
-# Or manually
-just pyinstaller
-python -m pytest tests/test_frozen_executable.py -v -s
-```
-
-### Important Test Flags
-
-- `-v` : Verbose output
-- `-s` : Show print statements (see build progress)
-- `--tb=short` : Shorter traceback
-
-## Debugging
-
-### Enable Verbose Logging
-
-Set in `.env`:
-```env
-LOG_LEVEL=DEBUG
-```
-
-Or use `-v` flag:
-```bash
-winlldp send -v
-winlldp capture start -v
-```
-
-### Common Issues
-
-1. **Import errors in frozen exe**: Check `pyinstaller.spec` hiddenimports
-2. **Path issues**: Use `winlldp.paths` module for all file paths
-3. **Service issues**: Check `nssm_service.log` in exe directory
-
-## Contributing
-
-### Code Style
-
-- Follow existing patterns in the codebase
-- Use type hints where appropriate
-- Add docstrings to new functions/classes
-- Keep functions focused and small
-
-### Testing
-
-- Add tests for new features
-- Ensure all tests pass before submitting PR
-- Test both development and frozen executable
-
-### Commit Messages
-
-Use conventional commits:
-- `feat:` New feature
-- `fix:` Bug fix
-- `docs:` Documentation
-- `test:` Tests
-- `refactor:` Code refactoring
-
-### Release Process
-
-Releases are managed with [commitizen](https://commitizen-tools.github.io/commitizen/), from the Conventional Commit messages:
-
-1. **Lint and test**: `just lint` and `just test` (builds the executable first, then runs every test)
-2. **Preview**: `uv run cz bump --dry-run`
-3. **Bump**: `uv run cz bump` updates the version in `pyproject.toml` and `CHANGELOG.md`, commits and tags `vX.Y.Z`
-4. **Publish**: `git push --follow-tags`; the tag runs `.github/workflows/release.yml`, which builds, tests and publishes `winlldp-vX.Y.Z.exe` with the changelog as release notes
-
-## Advanced Configuration
-
-### Custom TLVs
-
-To add custom TLVs, modify `lldp_packet.py`:
-
-```python
-# Add to create_lldp_packet()
-custom_tlv = struct.pack('!H', (127 << 9) | len(data)) + data
-```
-
-### Interface Filtering
-
-To filter interfaces, modify `system_info.py`:
-
-```python
-# In get_interfaces()
-if interface_name.startswith('vEthernet'):
-    continue  # Skip Hyper-V interfaces
-```
-
-### Service Customization
-
-To modify service behavior, edit `service_wrapper.py`:
-
-```python
-# Change send interval dynamically
-self.sender.interval = new_interval
-```
+Use Conventional Commits (`feat:`, `fix:`, `docs:`, ...): commitizen derives the version from them.
 
 ## Resources
 
-- [IEEE 802.1AB-2016 Standard](https://standards.ieee.org/standard/802_1AB-2016.html)
-- [Scapy Documentation](https://scapy.readthedocs.io/)
-- [PyInstaller Documentation](https://pyinstaller.readthedocs.io/)
-- [NSSM Documentation](https://nssm.cc/)
+- [IEEE 802.1AB-2016](https://standards.ieee.org/standard/802_1AB-2016.html)
+- [Npcap](https://npcap.com/guide/)
+- [NSSM](https://nssm.cc/)

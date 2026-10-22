@@ -2,6 +2,8 @@
 
 A Windows implementation of LLDP (Link Layer Discovery Protocol) that helps discover network devices and their capabilities. WinLLDP allows Windows machines to participate in network topology discovery by sending and receiving LLDP packets.
 
+> **v2 is written in Rust**: a single ~1 MB `winlldp.exe` with no runtime to unpack, and the same commands, options, configuration and files as v1. The Python v1.x line is still maintained for security and bug fixes. See [What changed in v2](#what-changed-in-v2).
+
 ## What is LLDP?
 
 LLDP is a vendor-neutral protocol used by network devices to advertise their identity, capabilities, and neighbors. It's commonly used in enterprise networks for:
@@ -293,7 +295,22 @@ LLDP Neighbors:
 Total neighbors: 2
 ```
 
+## What changed in v2
+
+Same commands, options, `.env` settings, output and files (`neighbors.json`, `capture.pid`, `winlldp_capture.log`, `nssm_service.log`); v1 and v2 can read each other's `neighbors.json`. The differences:
+
+- **Rust instead of Python**: `winlldp.exe` is ~1 MB (v1: ~16 MB) and starts instantly; Npcap is loaded at run time.
+- **Clear errors**: `capture start` and `send` fail with a message and a non-zero exit code when Npcap is missing or the capture cannot start (v1 could report success). Failures (capture start/stop, sending, configuration errors, service commands) exit with code 1.
+- **LLDP-MED Software Revision** is `WinLLDP <version>` (v1 sent the Python version), and **Model Name** (e.g. `Microsoft Windows 11 Pro`) is always sent: v1 read it with `wmic`, which recent Windows versions no longer include.
+- **Management Address TLV**: the interface number is the real ifIndex, and an IPv6 `LLDP_MANAGEMENT_ADDRESS` is sent as IPv6 (v1 labelled it IPv4).
+- **`debug-paths`** shows the real capture log location (next to the exe).
+- Unknown TLV or subtype values in received packets no longer make the whole packet be dropped.
+- `capture stop`/`status` check that the PID in `capture.pid` is still a WinLLDP process, so a stale PID file never kills an unrelated program.
+
 ## Troubleshooting
+
+### "Npcap is not installed"
+WinLLDP sends and captures raw Ethernet frames through [Npcap](https://npcap.com/). Install it (the default options are fine) and try again.
 
 ### "Access Denied" Error
 - **Solution**: Run PowerShell as Administrator
@@ -314,6 +331,7 @@ Total neighbors: 2
 
 - **Windows 10/11 or Windows Server 2016+** (64-bit)
 - **Administrator privileges** (for raw network access)
+- **[Npcap](https://npcap.com/)** (to send and capture LLDP frames)
 - **NSSM** (for service installation)
 - **Network adapter** that supports promiscuous mode
 
@@ -324,8 +342,3 @@ See [Development Guide](docs/development.md) for building from source.
 ## License
 
 MIT License - See [LICENSE](LICENSE) file for details.
-
-
-## License
-
-MIT
