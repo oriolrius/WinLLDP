@@ -1,6 +1,6 @@
 # ADR 0001: Npcap in v2 — no bundling, native capture with Packet Monitor
 
-- **Status**: accepted (2026-10-22); native capture (task 2) not implemented yet
+- **Status**: accepted (2026-10-22); task 2 spike done and successful (see [Spike results](#spike-results)); backend not implemented yet
 - **Scope**: v2 (Rust, `master`). v1 keeps depending on Npcap through scapy.
 
 ## Context
@@ -51,8 +51,7 @@ the built-in packet capture tool ([PacketMonitorInitialize](https://learn.micros
 
 Checked on the development machine (Windows 11 25H2, build 26200): `PktMonApi.dll` exports the 11
 `PacketMonitor*` functions, and the Microsoft LLDP Protocol Driver (`ms_lldp`) is bound to every adapter.
-That driver subscribes to the LLDP multicast address, which should let LLDP frames reach Packet Monitor
-without promiscuous mode — **to be verified**.
+The spike below confirmed that LLDP frames reach Packet Monitor without promiscuous mode.
 
 ### 3. Sending without Npcap: not possible from user mode
 
@@ -84,14 +83,51 @@ drivers are likely to be blocked on Windows 11. Not an option.
    `Enable-NetLldpAgent`, documented as a workaround.
 4. Not pursued: Npcap OEM (cost), our own NDIS driver (signing and maintenance burden), WinPcap/Win10Pcap.
 
+## Spike results
+
+`examples/pktmon_spike.rs` (on top of `src/pktmon.rs`, which loads `PktMonApi.dll` at run time) ran for
+40 s on the development machine (Windows 11 25H2, build 26200, administrator, no Npcap in use), with
+`winlldp send` run twice meanwhile:
+
+- **It works without Npcap and without promiscuous mode**: 75 LLDP frames, from 8 real devices on the
+  network (QNAP NAS ×2, MikroTik ×2, UniFi UDM Pro and U6 AP, Proxmox) plus our own frames.
+- **Layouts**: the structures in `src/pktmon.rs` follow packetmonitor.h (`PACKETMONITOR_MAX_NAME_LENGTH`
+  64, `PACKETMONITOR_MAX_STRING_LENGTH` 128, as in the documentation and three independent copies of the
+  header); a unit test pins every offset. `PacketMonitorEnumDataSources` returns a list of *pointers* to
+  specifications, which are passed as-is to `PacketMonitorAddSingleDataSourceToSession`.
+- **Filter**: `PacketMonitorAddCaptureConstraint` with `IsPresent.EtherType` and `EtherType = 0x88cc` in
+  host byte order streams only LLDP.
+- **Truncation**: with `TruncationSize = 9000`, frames arrive complete (up to 273 bytes seen;
+  `PacketLength` equals the frame length). Packet type is Ethernet (1) for all.
+- **Windows sends LLDP by itself**: the Microsoft LLDP agent sends a 54-byte LLDPDU on every adapter
+  (chassis ID = the computer name, locally assigned). This is the "LOCALLY_ASSIGNED" neighbor that
+  appeared in the integration tests; it is also captured through Npcap.
+- **One frame, several reports**: Packet Monitor reports a frame at every component it crosses. With a
+  Hyper-V external switch, a frame from the network appears at the physical NIC (`e2fn.sys`, `Rx`), at
+  the host vNIC port (`vmswitch.sys`, `Egress`) and at each VM port (`Egress`); our own frames appear at
+  the host vNIC (`Tx`) and, on internal switches, again at the switch port (`Ingress`).
+- **Component IDs**: the stream metadata's `ComponentId` may be a data source's `Id` *or* its
+  `SecondaryId` (e.g. 18 = `Host vNic #2`, secondary of 209 = `vEthernet (ymbihq.local)`), so the
+  mapping needs `PacketMonitorEnumDataSources(..., showHidden = true)`.
+- **Mapping to Windows interfaces**: a vSwitch host port's `Description` is the interface's friendly name
+  (`vEthernet (ymbihq.local)`), and a plain NIC's `Description` is the adapter description
+  (`Intel(R) Wi-Fi 6E AX210 160MHz`), both available from `GetAdaptersAddresses`. Physical NICs bound to
+  a vSwitch (no IP stack) are not WinLLDP interfaces, as with Npcap.
+
 ## Task 2 plan
 
-1. **Spike**: a minimal live session with an EtherType `0x88cc` constraint on this machine. Confirm that
-   LLDP frames from a switch and from `winlldp send` arrive without promiscuous mode, that 9000-byte
-   truncation works, how metadata maps to adapters (friendly name / ifIndex), and which privileges it
-   needs (administrator expected).
-2. **Backend**: `src/pktmon.rs` loading `PktMonApi.dll` at run time (like `src/pcap.rs`, so the same
-   executable runs on older Windows); a common capture interface used by `capture.rs`; Npcap as fallback.
+1. ~~**Spike**~~: done, see above.
+2. **Backend**: a common capture interface used by `capture.rs`, with two implementations: Packet Monitor
+   (`src/pktmon.rs`, preferred when `PktMonApi.dll` provides the API, so the same executable still runs on
+   older Windows) and Npcap (fallback). The Packet Monitor one:
+   - one live session with every network-interface data source and the EtherType `0x88cc` constraint,
+     `TruncationSize` 9000;
+   - maps `ComponentId` → data source (by `Id` or `SecondaryId`, hidden ones included) → WinLLDP interface
+     (friendly name, else adapter description), and drops frames on components that are not an active
+     WinLLDP interface;
+   - keeps both directions, like Npcap (our own frames included), and drops the duplicate report of the
+     same frame on the same interface (same bytes within one second);
+   - keeps the data callback short (copy the frame, hand it to a worker thread), as Microsoft recommends.
 3. **`neighbors.json` unchanged**: same keys and interface names as with Npcap, so v1, v2 and both
    backends stay compatible.
 4. **Diagnostics**: the capture log and `capture status` say which backend is in use.

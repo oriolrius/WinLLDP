@@ -8,6 +8,7 @@ pub mod logger;
 pub mod packet;
 pub mod paths;
 pub mod pcap;
+pub mod pktmon;
 pub mod process;
 pub mod sender;
 pub mod service;
