@@ -1,4 +1,4 @@
-# WinLLDP - Developer Guide for Claude
+# WinLLDP - Developer Guide for AI agents
 
 ## Project Overview
 
