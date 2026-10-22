@@ -32,6 +32,7 @@ name = "cz_conventional_commits"
 version_provider = "uv"
 tag_format = "v$version"
 update_changelog_on_bump = true
+annotated_tag = true
 major_version_zero = false
 
 [tool.ruff]
