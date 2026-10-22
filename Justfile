@@ -1,24 +1,34 @@
-# Justfile for winlldp project
-# use PowerShell instead of sh:
-set shell := ["powershell.exe", "-c"]
+# Justfile for winlldp v2 (Rust)
+# On Windows the native toolchain builds for MSVC; from WSL/Linux we cross-compile
+# with mingw-w64 (x86_64-pc-windows-gnu) and run the .exe through WSL interop.
+set windows-shell := ["powershell.exe", "-NoProfile", "-c"]
 
-pyinstaller:
-    # stop any running winlldp.exe processes to avoid file lock issues
-    Stop-Process -Name winlldp -Force -ErrorAction SilentlyContinue; exit 0;
-    # remove folder build/ and dist/ and ignore if they do not exist
-    Remove-Item -Recurse -Force .\build\, .\dist\ -ErrorAction SilentlyContinue; exit 0;
-    # run pyinstaller with the specified spec file
-    uv run pyinstaller --log-level DEBUG --clean pyinstaller.spec;
-    
+target := if os() == "windows" { "x86_64-pc-windows-msvc" } else { "x86_64-pc-windows-gnu" }
+target_dir := env_var_or_default("CARGO_TARGET_DIR", "target")
 
-# lint with ruff (rules in pyproject.toml)
+# build the release executable into dist/winlldp.exe
+build:
+    cargo build --release --target {{target}}
+    just _copy-exe
+
+[unix]
+_copy-exe:
+    mkdir -p dist && cp "{{target_dir}}/{{target}}/release/winlldp.exe" dist/winlldp.exe
+
+[windows]
+_copy-exe:
+    New-Item -ItemType Directory -Force dist | Out-Null; Copy-Item "{{target_dir}}/{{target}}/release/winlldp.exe" dist/winlldp.exe
+
+# formatting and clippy (warnings are errors)
 lint:
-    uv run ruff check .
+    cargo fmt --check
+    cargo clippy --target {{target}} --all-targets -- -D warnings
 
-# build the executable, then run every test (unit, paths and frozen executable)
-test: pyinstaller
-    uv run python -m unittest discover -s tests -p "test_*.py" -v
+# every test: unit tests and the integration tests that run winlldp.exe
+# (capture tests need Npcap; service tests need administrator rights and NSSM)
+test:
+    cargo test --target {{target}}
 
 # preview the next release (version + changelog) from the commit messages
 bump-dry-run:
-    uv run cz bump --dry-run
+    uvx --from commitizen cz bump --dry-run

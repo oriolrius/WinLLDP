@@ -4,6 +4,8 @@ capture.pid
 nssm_service.log
 dist/
 build/
+# Rust
+target/
 # Python
 __pycache__/
 *.pyc
