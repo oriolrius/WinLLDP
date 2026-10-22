@@ -63,7 +63,8 @@ jobs:
           $sums = Get-ChildItem release -File | Sort-Object Name | ForEach-Object {
             "{0}  {1}" -f (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower(), $_.Name
           }
-          $sums | Set-Content -Encoding ascii release/SHA256SUMS.txt
+          # LF line endings: `sha256sum -c` and Get-FileHash both read it
+          [IO.File]::WriteAllText("$PWD/release/SHA256SUMS.txt", (($sums -join "`n") + "`n"))
           Get-Content release/SHA256SUMS.txt
 
       - uses: softprops/action-gh-release@v3
