@@ -53,17 +53,37 @@ Checked on the development machine (Windows 11 25H2, build 26200): `PktMonApi.dl
 `PacketMonitor*` functions, and the Microsoft LLDP Protocol Driver (`ms_lldp`) is bound to every adapter.
 The spike below confirmed that LLDP frames reach Packet Monitor without promiscuous mode.
 
-### 3. Sending without Npcap: not possible from user mode
+### 3. Sending without Npcap: what Windows offers, tested
 
-- Windows' own LLDP agent (MSLLDP) sends LLDP. On Windows Server it is controlled with
-  [`Enable-NetLldpAgent`](https://learn.microsoft.com/en-us/powershell/module/netlldpagent/enable-netlldpagent?view=windowsserver2022-ps)
-  ([NetLldpAgent module](https://learn.microsoft.com/en-us/powershell/module/netlldpagent/?view=windowsserver2022-ps)),
-  which needs the Data Center Bridging feature. It only advertises basic TLVs (computer name / MAC), and
-  its contents cannot be customized
-  ([Microsoft Q&A](https://learn.microsoft.com/en-us/answers/questions/378477/how-to-configure-microsoft-lldp-protocol-driver?page=3)):
-  none of WinLLDP's TLVs (Windows version/build, management address, LLDP-MED).
-- Our own NDIS protocol driver would work but needs kernel development, an EV certificate, Microsoft
-  attestation signing and ongoing security maintenance.
+Windows has no socket type for raw layer-2 frames (raw sockets stop at IP), so sending needs an NDIS
+protocol driver. Checked on the development machine (Windows 11 25H2):
+
+- **`ndisuio.sys` (NDIS Usermode I/O Protocol)** ships with Windows, runs, and is bound to every
+  adapter. Through `\\.\Ndisuio` (IOCTLs from `nuiouser.h`: `BIND_WAIT`, `QUERY_BINDING`,
+  `OPEN_DEVICE`, `SET_ETHER_TYPE`) a user-mode program can open an adapter and **send an 802.1X EAPOL
+  frame**, but `SET_ETHER_TYPE` only accepts `0x888E` and writing an LLDP frame (`0x88CC`) fails with
+  `ERROR_INVALID_PARAMETER`: Windows restricts it to 802.1X on purpose.
+- **Windows' own LLDP agent (`mslldp.sys`)** runs on client Windows too and already sends LLDP on every
+  adapter (scope "nearest bridge"). WMI exposes it as `root/StandardCimv2:MSFT_NetLldpAgent`
+  (`Enable()`/`Disable()`; writable `AdminStatus`, `MsgTxInterval`, `MsgTxHold`, `MsgFastTx`,
+  `ReinitDelay`, `TxCreditMax`, `TxFastInit`), but its `Tlvs` are **read-only**. It advertises only
+  Chassis ID (the computer name, locally assigned), Port ID (the MAC), TTL, IEEE 802.3 MAC/PHY status and
+  LLDP-MED capabilities: no system name/description, Windows version or management address. On Windows
+  Server, [`Enable-NetLldpAgent`](https://learn.microsoft.com/en-us/powershell/module/netlldpagent/enable-netlldpagent?view=windowsserver2022-ps)
+  ([NetLldpAgent module](https://learn.microsoft.com/en-us/powershell/module/netlldpagent/?view=windowsserver2022-ps),
+  Data Center Bridging feature) drives the same agent
+  ([Microsoft Q&A](https://learn.microsoft.com/en-us/answers/questions/378477/how-to-configure-microsoft-lldp-protocol-driver?page=3)).
+- **[XDP for Windows](https://github.com/microsoft/xdp-for-windows)** (Microsoft, MIT license): AF_XDP
+  sockets send and receive whole L2 frames, and "generic XDP" works on any NDIS interface. Official
+  releases are production-signed and install silently (`msiexec /quiet`, or the runtime NuGet package
+  plus `xdp-setup.ps1`), and the license allows redistribution. But it is a separate driver that must be
+  installed, it is only tested on Windows Server 2019 and 2022, and Microsoft has no plan to ship it with
+  Windows.
+- **Our own NDIS protocol driver** (like the WDK `ndisprot` sample, without the 802.1X restriction):
+  kernel development, an EV certificate and Microsoft signing (attestation signing covers client
+  Windows; Windows Server needs HLK certification), and security maintenance.
+- Other inbox drivers send fixed protocols only (LLTD `lltdio.sys`/`rspndr.sys`), or inject layer-2
+  frames from kernel mode only (WFP MAC-frame layers).
 
 ### 4. Other capture libraries
 
@@ -78,9 +98,11 @@ drivers are likely to be blocked on Windows 11. Not an option.
 2. **Task 2 — native capture backend (v2):** `capture` uses the Packet Monitor API when `PktMonApi.dll`
    provides it (Windows 11 24H2+, Windows Server 2025), and falls back to Npcap otherwise. Receiving
    neighbors then needs no third-party software on current Windows versions.
-3. **Sending stays on Npcap.** There is no user-mode alternative that can send WinLLDP's TLVs. Users who
-   cannot install Npcap can still advertise a basic LLDP identity with Windows Server's
-   `Enable-NetLldpAgent`, documented as a workaround.
+3. **Sending stays on Npcap.** Nothing that ships with Windows can send WinLLDP's TLVs: `ndisuio` only sends
+   802.1X frames, and Windows' own LLDP agent only advertises the computer name and MAC, with fixed
+   contents. Machines without Npcap still announce that basic identity through Windows' agent (enabled
+   by default). XDP for Windows is the only redistributable alternative; it remains a candidate for a
+   second send backend if Npcap's licensing becomes a blocker, after testing it on client Windows.
 4. Not pursued: Npcap OEM (cost), our own NDIS driver (signing and maintenance burden), WinPcap/Win10Pcap.
 
 ## Spike results
