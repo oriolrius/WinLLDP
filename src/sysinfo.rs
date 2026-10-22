@@ -328,7 +328,7 @@ mod win {
 pub use win::{adapters, hostname, interfaces, os_caption, os_version, registry_string, wide};
 
 #[cfg(not(windows))]
-mod fallback {
+mod non_windows {
     use super::Interface;
 
     pub fn interfaces() -> Vec<Interface> {
@@ -353,7 +353,7 @@ mod fallback {
 }
 
 #[cfg(not(windows))]
-pub use fallback::{adapters, hostname, interfaces, os_caption, os_version};
+pub use non_windows::{adapters, hostname, interfaces, os_caption, os_version};
 
 #[cfg(test)]
 mod tests {
