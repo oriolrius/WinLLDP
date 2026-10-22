@@ -60,7 +60,6 @@ a = Analysis(
         'ctypes.wintypes',
         # Other dependencies
         'dotenv',
-        'python-dotenv',
         'psutil',
         'psutil._psutil_windows',
         'psutil._pswindows',
