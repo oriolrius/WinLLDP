@@ -331,7 +331,7 @@ fn capture_status_and_stop_when_not_running() {
 #[test]
 fn stale_pid_file_never_kills_another_program() {
     let s = Sandbox::new("stalepid");
-    let mut other = Command::new("ping").args(["-n", "30", "127.0.0.1"]).stdout(Stdio::null()).spawn().unwrap();
+    let mut other = Command::new("ping").args(["-n", "600", "127.0.0.1"]).stdout(Stdio::null()).spawn().unwrap();
     std::fs::write(s.path("capture.pid"), other.id().to_string()).unwrap();
     assert!(s.run(&["capture", "status"]).stdout.contains("NOT RUNNING"));
     let r = s.run(&["capture", "stop"]);
@@ -454,7 +454,13 @@ fn captured_lldp_becomes_a_neighbor() {
     assert!(found, "no neighbor recorded; log:\n{}", s.run(&["capture", "log", "-n", "40"]).stdout);
     let neighbors: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(s.path("neighbors.json")).unwrap()).unwrap();
-    let (_, n) = neighbors.as_object().unwrap().iter().next().unwrap();
+    // Other LLDP devices on the network may be recorded too: check ours
+    let n = neighbors
+        .as_object()
+        .unwrap()
+        .values()
+        .find(|n| n["data"]["system_description"].as_str().is_some_and(|d| d.starts_with("Windows 10.0.")))
+        .unwrap();
     for key in ["interface", "source_mac", "data", "first_seen", "last_seen", "ttl"] {
         assert!(n.get(key).is_some(), "{key} missing: {n}");
     }
