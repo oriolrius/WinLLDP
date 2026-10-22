@@ -6,7 +6,7 @@ import threading
 import os
 from typing import Dict, List, Optional
 from datetime import datetime, timedelta
-from .system_info import SystemInfo
+from .system_info import SystemInfo, NPCAP_URL
 from .config import Config
 from .logger import get_logger
 from .file_debug import debug_open as open
@@ -53,6 +53,7 @@ class LLDPReceiver:
         self.neighbors: Dict[str, Neighbor] = {}
         self.running = False
         self.subprocess = None
+        self.last_error: Optional[str] = None
         self.reader_thread = None
         self.lock = threading.Lock()
         self.system_info = SystemInfo()
@@ -157,9 +158,19 @@ class LLDPReceiver:
         return False
     
     def start_capture(self) -> bool:
-        """Start the LLDP capture subprocess"""
+        """Start the LLDP capture subprocess
+
+        On failure returns False and leaves the reason in self.last_error.
+        """
+        self.last_error = None
         if self.is_capture_running():
-            self.logger.info("Capture is already running")
+            self.last_error = "Capture is already running"
+            self.logger.info(self.last_error)
+            return False
+
+        if not SystemInfo.npcap_installed():
+            self.last_error = f"Npcap is not installed; it is required for packet capture. Install it from {NPCAP_URL}"
+            self.logger.error(self.last_error)
             return False
         
         # Use config paths for all files
@@ -204,7 +215,8 @@ class LLDPReceiver:
         if self.subprocess.poll() is not None:
             # Process already exited, show error
             stderr = self.subprocess.stderr.read()
-            self.logger.error("Capture process exited immediately")
+            self.last_error = f"Capture process exited immediately (see the log: {self._log_file})"
+            self.logger.error(self.last_error)
             if stderr:
                 self.logger.error(f"Error output: {stderr}")
             return False

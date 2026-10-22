@@ -62,7 +62,7 @@ def main():
             if receiver.start_capture():
                 log("Capture started successfully")
             else:
-                log("WARNING: Failed to start capture subprocess")
+                log(f"WARNING: Failed to start capture subprocess: {receiver.last_error}")
         
         # Start sender
         log("Starting LLDP sender...")

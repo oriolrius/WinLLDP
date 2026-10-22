@@ -79,7 +79,8 @@ def capture_start(env_file, verbose):
         if not verbose:
             click.echo(f"Neighbors file: {config.neighbors_file}")
     else:
-        click.echo("Failed to start LLDP capture", err=True)
+        click.echo(f"Failed to start LLDP capture: {receiver.last_error}", err=True)
+        sys.exit(1)
 
 
 @capture.command('stop')

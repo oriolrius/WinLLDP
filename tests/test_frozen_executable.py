@@ -207,6 +207,15 @@ class TestFrozenExecutable(unittest.TestCase):
             f"Expected version '{expected_version}' not found in output: {result.stdout}"
         )
     
+    @unittest.skipIf(npcap_installed(), "Npcap is installed")
+    def test_capture_start_fails_without_npcap(self):
+        """Without Npcap, capture start should fail and say so instead of reporting success"""
+        result = self.run_exe("capture", "start", timeout=30)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Npcap is not installed", result.stderr)
+        self.assertNotIn("started successfully", result.stdout)
+        self.assertFalse((Path(self.test_dir) / "capture.pid").exists())
+
     @requires_npcap
     def test_files_created_in_exe_directory(self):
         """Test that files are created in exe directory, not temp"""

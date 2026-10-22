@@ -1,10 +1,23 @@
+import os
 import socket
 import platform
 import psutil
 from typing import Dict, List, Optional, Tuple
 
 
+NPCAP_URL = 'https://npcap.com/'
+
+
 class SystemInfo:
+    @staticmethod
+    def npcap_installed() -> bool:
+        """Packet capture on Windows needs Npcap (or the older WinPcap)"""
+        if os.name != 'nt':
+            return True
+        system32 = os.path.join(os.environ.get('SystemRoot', r'C:\Windows'), 'System32')
+        return (os.path.exists(os.path.join(system32, 'Npcap', 'wpcap.dll'))
+                or os.path.exists(os.path.join(system32, 'wpcap.dll')))
+
     @staticmethod
     def get_hostname() -> str:
         return socket.gethostname()
