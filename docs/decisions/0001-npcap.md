@@ -75,10 +75,10 @@ protocol driver. Checked on the development machine (Windows 11 25H2):
   ([Microsoft Q&A](https://learn.microsoft.com/en-us/answers/questions/378477/how-to-configure-microsoft-lldp-protocol-driver?page=3)).
 - **[XDP for Windows](https://github.com/microsoft/xdp-for-windows)** (Microsoft, MIT license): AF_XDP
   sockets send and receive whole L2 frames, and "generic XDP" works on any NDIS interface. Official
-  releases are production-signed and install silently (`msiexec /quiet`, or the runtime NuGet package
-  plus `xdp-setup.ps1`), and the license allows redistribution. But it is a separate driver that must be
-  installed, it is only tested on Windows Server 2019 and 2022, and Microsoft has no plan to ship it with
-  Windows.
+  releases are production-signed and install silently (the runtime NuGet package plus `xdp-setup.ps1`;
+  an MSI before v1.3), and the license allows redistribution. It is a separate driver that must be
+  installed, Microsoft only tests it on Windows Server, and has no plan to ship it with Windows.
+  **Validated on client Windows**, see [XDP validation](#xdp-validation).
 - **Our own NDIS protocol driver** (like the WDK `ndisprot` sample, without the 802.1X restriction):
   kernel development, an EV certificate and Microsoft signing (attestation signing covers client
   Windows; Windows Server needs HLK certification), and security maintenance.
@@ -89,6 +89,32 @@ protocol driver. Checked on the development machine (Windows 11 25H2):
 
 WinPcap (abandoned in 2013) and Win10Pcap (GPL, last release 2015) are unmaintained, and their old
 drivers are likely to be blocked on Windows 11. Not an option.
+
+## XDP validation
+
+On the development machine (Windows 11 25H2 build 26200, HVCI on, Secure Boot off, Npcap also
+installed), with `examples/xdp_spike.rs`:
+
+- **Package**: `Microsoft.XDP-for-Windows.Runtime.x64` 1.4.0 from nuget.org (July 2026). `xdp.sys` and
+  `xdp.cat` are signed by *Microsoft Windows Hardware Compatibility Publisher*, so no test signing.
+  `xdp-setup.ps1 -Install xdp` (no prompts, no downloads) registers the `ms_xdp` network component with
+  `netcfg`, installs `xdp.sys` and `xdpapi.dll` in System32 and performance counters; the `xdp` service
+  runs and `ms_xdp` binds to every adapter. `xdp-setup.ps1 -Uninstall xdp` removes it.
+- **Sending**: through `xdpapi.dll` (`XdpOpenApi` version 2 function table): `XskCreate`, a 64 KiB UMEM
+  (`XSK_SOCKOPT_UMEM_REG`), TX and TX-completion rings of 8, `XskBind(ifIndex, queue 0, TX | GENERIC)`,
+  `XskActivate`, then one descriptor on the TX ring and `XskNotifySocket(POKE_TX | WAIT_TX)`. On each of
+  the four active adapters the descriptor completed with no invalid descriptors, and Packet Monitor saw
+  the complete 195-byte LLDPDU (`system name = xdp-test`) leave the adapter (`Tx`) and cross the Hyper-V
+  switch exactly like a frame sent through Npcap.
+- **Coexistence**: XDP, Packet Monitor and Npcap ran at the same time without interference; no program
+  (receive hook) is needed to transmit.
+- **Not verified**: delivery on a physical NIC outside a Hyper-V switch (none was connected), and
+  reception by another machine. The WSL VM on the `WSL (Hyper-V firewall)` switch received neither the
+  XDP frame nor the Npcap one, so that switch does not deliver LLDP to the VM, whatever the sender.
+- **Implementation notes**: `xdpapi.dll` is the deprecated path; the supported API (version 3) is
+  header-only and talks to the driver directly (`NtCreateFile` on `\Device\xdpapi\xsk` with an
+  `XdpOpenPacket000` extended attribute, then `NtDeviceIoControlFile`), which a Rust backend can do
+  without the DLL. AF_XDP needs administrator rights, as WinLLDP already does.
 
 ## Decision
 
@@ -101,8 +127,9 @@ drivers are likely to be blocked on Windows 11. Not an option.
 3. **Sending stays on Npcap.** Nothing that ships with Windows can send WinLLDP's TLVs: `ndisuio` only sends
    802.1X frames, and Windows' own LLDP agent only advertises the computer name and MAC, with fixed
    contents. Machines without Npcap still announce that basic identity through Windows' agent (enabled
-   by default). XDP for Windows is the only redistributable alternative; it remains a candidate for a
-   second send backend if Npcap's licensing becomes a blocker, after testing it on client Windows.
+   by default). XDP for Windows is the only redistributable alternative and works on client Windows
+   (see [XDP validation](#xdp-validation)): it is the candidate for a second send backend, so that
+   WinLLDP can run with no Npcap at all.
 4. Not pursued: Npcap OEM (cost), our own NDIS driver (signing and maintenance burden), WinPcap/Win10Pcap.
 
 ## Spike results
