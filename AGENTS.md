@@ -2,6 +2,8 @@
 
 ## Project Overview
 
+**This is the `v1` maintenance branch (Python).** v1.x receives security and bug fixes only; new development happens in v2 (Rust) on `master`. Keep fixes that affect both lines in sync, and keep `neighbors.json`/`.env` compatible with v2. Branch from `v1` and target PRs at `v1`.
+
 WinLLDP is a Python-based Windows implementation of the Link Layer Discovery Protocol (LLDP). It sends and receives LLDP packets to discover network neighbors and can run as a Windows service.
 
 **Project Version**: see `pyproject.toml` (managed by commitizen)  

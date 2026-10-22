@@ -2,7 +2,7 @@
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `ci.yml` | push to `master`, pull requests | `uv sync --locked`, `ruff check`, builds `winlldp.exe` with PyInstaller, runs all tests (unit, path resolution and the frozen executable), uploads the exe as an artifact |
+| `ci.yml` | push to `v1`, pull requests | `uv sync --locked`, `ruff check`, builds `winlldp.exe` with PyInstaller, runs all tests (unit, path resolution and the frozen executable), uploads the exe as an artifact |
 | `release.yml` | push of a `v*` tag | checks the tag matches `pyproject.toml`, builds and tests like CI, takes the release notes from `CHANGELOG.md` and publishes `winlldp-vX.Y.Z.exe` as a GitHub release |
 
 Dependabot (`../dependabot.yml`) opens weekly grouped updates for the uv lockfile (`build(deps): …`) and the actions (`ci: …`).

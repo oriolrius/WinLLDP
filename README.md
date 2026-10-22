@@ -2,6 +2,8 @@
 
 A Windows implementation of LLDP (Link Layer Discovery Protocol) that helps discover network devices and their capabilities. WinLLDP allows Windows machines to participate in network topology discovery by sending and receiving LLDP packets.
 
+> **This is v1 (Python), maintained for security and bug fixes.** The current version, v2, is a Rust rewrite with the same commands and configuration: see the [`master` branch](https://github.com/oriolrius/WinLLDP) and the [latest release](https://github.com/oriolrius/WinLLDP/releases/latest).
+
 ## What is LLDP?
 
 LLDP is a vendor-neutral protocol used by network devices to advertise their identity, capabilities, and neighbors. It's commonly used in enterprise networks for:
