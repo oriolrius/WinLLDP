@@ -19,6 +19,15 @@ fn npcap_installed() -> bool {
     system32.join("Npcap").join("wpcap.dll").exists() || system32.join("wpcap.dll").exists()
 }
 
+/// Windows Packet Monitor API (Windows 11 24H2+ / Server 2025): capture without Npcap
+fn packet_monitor_available() -> bool {
+    winlldp::pktmon::api().is_ok()
+}
+
+fn capture_available() -> bool {
+    npcap_installed() || packet_monitor_available()
+}
+
 fn is_admin() -> bool {
     Command::new("net").arg("session").stdout(Stdio::null()).stderr(Stdio::null()).status().is_ok_and(|s| s.success())
 }
@@ -342,20 +351,31 @@ fn stale_pid_file_never_kills_another_program() {
 }
 
 #[test]
-fn capture_start_fails_without_npcap() {
-    // Point Windows' directory somewhere without Npcap to simulate a machine without it
+fn capture_start_fails_without_npcap_or_packet_monitor() {
+    // Point Windows' directory somewhere without Npcap or PktMonApi.dll to simulate such a machine
     let s = Sandbox::new("nonpcap");
     let fake_root = s.path("FakeWindows");
     std::fs::create_dir_all(fake_root.join("System32")).unwrap();
-    let r = s.run_with(&["capture", "start"], &[("SystemRoot", fake_root.to_str().unwrap())]);
+    let root = fake_root.to_str().unwrap();
+    let r = s.run_with(&["capture", "start"], &[("SystemRoot", root)]);
     assert_ne!(r.code, 0);
     assert!(r.stderr.contains("Npcap is not installed"), "{r:?}");
+    assert!(r.stderr.contains("Packet Monitor API is not available"), "{r:?}");
     assert!(!r.stdout.contains("started successfully"));
     assert!(!s.path("capture.pid").exists());
-    if !npcap_installed() {
+    if !capture_available() {
         let r = s.run(&["capture", "start"]);
         assert!(r.code != 0 && r.stderr.contains("Npcap is not installed"), "{r:?}");
     }
+
+    // A forced backend reports its own requirement
+    let r = s.run_with(&["capture", "start"], &[("SystemRoot", root), ("LLDP_CAPTURE_BACKEND", "npcap")]);
+    assert!(r.code != 0 && r.stderr.contains("Npcap is not installed; it is required"), "{r:?}");
+    let r = s.run_with(&["capture", "start"], &[("SystemRoot", root), ("LLDP_CAPTURE_BACKEND", "pktmon")]);
+    assert!(r.code != 0 && r.stderr.contains("needs Windows 11 24H2+ or Windows Server 2025"), "{r:?}");
+    let r = s.run_with(&["capture", "start"], &[("LLDP_CAPTURE_BACKEND", "wireshark")]);
+    assert!(r.code != 0 && r.stderr.contains("Invalid LLDP_CAPTURE_BACKEND 'wireshark'"), "{r:?}");
+    assert!(!s.path("capture.pid").exists());
 }
 
 #[test]
@@ -384,8 +404,8 @@ fn send_command() {
 
 #[test]
 fn capture_files_live_in_exe_directory_not_temp() {
-    if !npcap_installed() {
-        eprintln!("skipped: Npcap is not installed");
+    if !capture_available() {
+        eprintln!("skipped: neither Npcap nor the Packet Monitor API is available");
         return;
     }
     let s = Sandbox::new("capture");
@@ -409,9 +429,11 @@ fn capture_files_live_in_exe_directory_not_temp() {
         r.stdout.contains("LLDP Capture Status: RUNNING") && r.stdout.contains("PID:") && r.stdout.contains("Memory:"),
         "{r:?}"
     );
+    let expected = if packet_monitor_available() { "Backend: Packet Monitor" } else { "Backend: Npcap" };
+    assert!(r.stdout.contains(expected), "{r:?}");
 
     let r = s.run(&["capture", "log", "-n", "0"]);
-    assert!(r.stdout.contains("Starting packet capture on:"), "{r:?}");
+    assert!(r.stdout.contains("Starting packet capture on:") && r.stdout.contains("Capture backend: "), "{r:?}");
 
     let temp_after: Vec<_> =
         std::fs::read_dir(std::env::temp_dir()).unwrap().flatten().map(|e| e.file_name()).collect();
@@ -432,29 +454,27 @@ fn capture_files_live_in_exe_directory_not_temp() {
     assert!(s.run(&["capture", "status"]).stdout.contains("NOT RUNNING"));
 }
 
-#[test]
-fn captured_lldp_becomes_a_neighbor() {
-    if !npcap_installed() {
-        eprintln!("skipped: Npcap is not installed");
-        return;
-    }
-    let s = Sandbox::new("e2e");
-    let r = s.run(&["capture", "start"]);
+/// Capture with `backend`, send our own LLDP (needs Npcap) and find ourselves as a neighbor
+fn own_lldp_becomes_a_neighbor(backend: &str, status_name: &str) {
+    let s = Sandbox::new(&format!("e2e-{backend}"));
+    let r = s.run_with(&["capture", "start"], &[("LLDP_CAPTURE_BACKEND", backend)]);
     assert_eq!(r.code, 0, "{r:?}");
+    let r = s.run(&["capture", "status"]);
+    assert!(r.stdout.contains(&format!("Backend: {status_name}")), "{r:?}");
     let sent = s.run(&["send", "-v"]);
     if !sent.stdout.contains("Sending LLDP on ") {
         eprintln!("skipped: no active interface to send on");
         return;
     }
-    // Npcap hands our own outgoing frames to the capture too
+    // Both backends hand our own outgoing frames to the capture too
     let found = wait_for(Duration::from_secs(10), || {
         std::fs::read_to_string(s.path("neighbors.json"))
             .is_ok_and(|t| t.contains("\"system_description\": \"Windows 10.0."))
     });
-    assert!(found, "no neighbor recorded; log:\n{}", s.run(&["capture", "log", "-n", "40"]).stdout);
+    assert!(found, "{backend}: no neighbor recorded; log:\n{}", s.run(&["capture", "log", "-n", "40"]).stdout);
     let neighbors: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(s.path("neighbors.json")).unwrap()).unwrap();
-    // Other LLDP devices on the network may be recorded too: check ours
+    // Other LLDP devices on the network (and Windows' own LLDP agent) may be recorded too: check ours
     let n = neighbors
         .as_object()
         .unwrap()
@@ -467,8 +487,29 @@ fn captured_lldp_becomes_a_neighbor() {
     assert_eq!(n["data"]["chassis_id_subtype"], "MAC_ADDRESS");
     assert_eq!(n["data"]["ttl"], 120);
     assert_eq!(n["data"]["system_capabilities"], 128);
+    // The neighbor is recorded on the interface it was sent from
+    let interfaces = s.run(&["show-interfaces"]).stdout;
+    assert!(interfaces.contains(n["interface"].as_str().unwrap()), "{n}");
     let r = s.run(&["show-neighbors"]);
     assert!(r.stdout.contains("Ethernet Port") && r.stdout.contains("Total neighbors:"), "{r:?}");
+}
+
+#[test]
+fn captured_lldp_becomes_a_neighbor_with_packet_monitor() {
+    if !packet_monitor_available() || !npcap_installed() {
+        eprintln!("skipped: needs the Packet Monitor API, and Npcap to send");
+        return;
+    }
+    own_lldp_becomes_a_neighbor("pktmon", "Packet Monitor");
+}
+
+#[test]
+fn captured_lldp_becomes_a_neighbor_with_npcap() {
+    if !npcap_installed() {
+        eprintln!("skipped: Npcap is not installed");
+        return;
+    }
+    own_lldp_becomes_a_neighbor("npcap", "Npcap");
 }
 
 fn sc_query() -> String {
@@ -520,11 +561,11 @@ fn service_lifecycle() {
         assert!(wait_for(Duration::from_secs(15), || std::fs::read_to_string(s.path("nssm_service.log"))
             .is_ok_and(|l| l.contains("Service started successfully"))));
         let log = std::fs::read_to_string(s.path("nssm_service.log")).unwrap();
-        if npcap_installed() {
+        if capture_available() {
             assert!(log.contains("Capture started successfully"), "{log}");
             assert!(s.run(&["capture", "status"]).stdout.contains("RUNNING"));
         } else {
-            // Without Npcap the service keeps running and says why there is no capture
+            // Without a capture backend the service keeps running and says why there is no capture
             assert!(log.contains("WARNING: Failed to start capture subprocess: Npcap is not installed"), "{log}");
         }
         let r = s.run(&["service", "status", "-v"]);

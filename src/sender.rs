@@ -207,6 +207,7 @@ mod tests {
         Interface {
             name: "vEthernet (ymbihq.local)".into(),
             adapter_name: "{X}".into(),
+            description: "Hyper-V Virtual Ethernet Adapter #2".into(),
             mac: Some("50:eb:f6:2c:f2:ba".into()),
             is_up: true,
             ipv4: vec!["10.2.0.47".into()],

@@ -201,6 +201,9 @@ fn capture_status(env_file: &Option<String>, verbose: bool) -> Result<(), i32> {
         Some((pid, info)) => {
             println!("LLDP Capture Status: RUNNING");
             println!("  PID: {pid}");
+            if let Some(backend) = capture::running_backend(&config.log_file) {
+                println!("  Backend: {backend}");
+            }
             match info {
                 Some(info) => {
                     println!("  Uptime: {}", process::format_uptime(info.uptime));

@@ -230,6 +230,12 @@ WinLLDP can be customized using a `.env` file placed in the same directory as `w
   LLDP_NEIGHBORS_FILE=C:\Logs\lldp_neighbors.json
   ```
 
+#### LLDP_CAPTURE_BACKEND
+- **Description**: How `capture` receives LLDP frames
+- **Default**: `auto` (Windows Packet Monitor when available, otherwise Npcap)
+- **Options**: `auto`, `pktmon` (Packet Monitor only: Windows 11 24H2+ / Windows Server 2025), `npcap` (Npcap only)
+- **Notes**: `winlldp.exe capture status` shows the backend in use
+
 ### Example Configuration Files
 
 #### Minimal Configuration (relies on defaults):
@@ -300,6 +306,7 @@ Total neighbors: 2
 Same commands, options, `.env` settings, output and files (`neighbors.json`, `capture.pid`, `winlldp_capture.log`, `nssm_service.log`); v1 and v2 can read each other's `neighbors.json`. The differences:
 
 - **Rust instead of Python**: `winlldp.exe` is ~1 MB (v1: ~16 MB) and starts instantly; Npcap is loaded at run time.
+- **Capture without Npcap on Windows 11 24H2+ / Windows Server 2025**: `capture` uses Windows' built-in Packet Monitor, so discovering neighbors needs no extra software there, and it also sees LLDP that reaches a Hyper-V host's `vEthernet` adapters through the virtual switch (Npcap only saw the host's own frames there). On older Windows it uses Npcap; `capture status` shows which (`LLDP_CAPTURE_BACKEND` forces one). Sending still needs Npcap.
 - **Clear errors**: `capture start` and `send` fail with a message and a non-zero exit code when Npcap is missing or the capture cannot start (v1 could report success). Failures (capture start/stop, sending, configuration errors, service commands) exit with code 1.
 - **LLDP-MED Software Revision** is `WinLLDP <version>` (v1 sent the Python version), and **Model Name** (e.g. `Microsoft Windows 11 Pro`) is always sent: v1 read it with `wmic`, which recent Windows versions no longer include.
 - **Management Address TLV**: the interface number is the real ifIndex, and an IPv6 `LLDP_MANAGEMENT_ADDRESS` is sent as IPv6 (v1 labelled it IPv4).
@@ -310,7 +317,7 @@ Same commands, options, `.env` settings, output and files (`neighbors.json`, `ca
 ## Troubleshooting
 
 ### "Npcap is not installed"
-WinLLDP sends and captures raw Ethernet frames through [Npcap](https://npcap.com/). Install it (the default options are fine) and try again. The free Npcap license covers up to 5 systems; larger deployments need an Npcap license (see [ADR 0001](docs/decisions/0001-npcap.md)).
+WinLLDP sends raw Ethernet frames through [Npcap](https://npcap.com/), and captures them through Windows' Packet Monitor (Windows 11 24H2+ / Windows Server 2025) or Npcap. Install Npcap (the default options are fine) and try again. The free Npcap license covers up to 5 systems; larger deployments need an Npcap license (see [ADR 0001](docs/decisions/0001-npcap.md)).
 
 ### "Access Denied" Error
 - **Solution**: Run PowerShell as Administrator
@@ -331,7 +338,7 @@ WinLLDP sends and captures raw Ethernet frames through [Npcap](https://npcap.com
 
 - **Windows 10/11 or Windows Server 2016+** (64-bit)
 - **Administrator privileges** (for raw network access)
-- **[Npcap](https://npcap.com/)** (to send and capture LLDP frames). Install it yourself: WinLLDP cannot bundle it, and its free license covers up to 5 systems; see [ADR 0001](docs/decisions/0001-npcap.md)
+- **[Npcap](https://npcap.com/)** to send LLDP (and to capture it on Windows older than 11 24H2 / Server 2025). Install it yourself: WinLLDP cannot bundle it, and its free license covers up to 5 systems; see [ADR 0001](docs/decisions/0001-npcap.md)
 - **NSSM** (for service installation)
 - **Network adapter** that supports promiscuous mode
 

@@ -162,6 +162,48 @@ impl StreamDataDescriptor {
     }
 }
 
+/// The fields of a data source needed to map packets to interfaces
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceInfo {
+    pub id: u32,
+    pub secondary_id: u32,
+    pub name: String,
+    pub description: String,
+}
+
+impl From<&DataSourceSpecification> for SourceInfo {
+    fn from(s: &DataSourceSpecification) -> Self {
+        SourceInfo { id: s.id, secondary_id: s.secondary_id, name: s.name(), description: s.description() }
+    }
+}
+
+/// Map every component ID (primary and secondary) to a WinLLDP interface name.
+///
+/// `sources` is the hidden-included list (`showHidden = true`), where a data source may appear
+/// several times with the same `id` and different `secondary_id`s; the entry with
+/// `id == secondary_id` describes it. Its description is the interface's friendly name for
+/// Hyper-V host ports ("vEthernet (...)") and the adapter description for other NICs.
+/// `interfaces` are the active interfaces as (friendly name, adapter description).
+pub fn component_interfaces(
+    sources: &[SourceInfo],
+    interfaces: &[(String, String)],
+) -> std::collections::HashMap<u32, String> {
+    let mut map = std::collections::HashMap::new();
+    for primary in sources.iter().filter(|s| s.id == s.secondary_id && !s.description.is_empty()) {
+        let interface = interfaces
+            .iter()
+            .find(|(name, _)| *name == primary.description)
+            .or_else(|| interfaces.iter().find(|(_, description)| *description == primary.description));
+        if let Some((name, _)) = interface {
+            for source in sources.iter().filter(|s| s.id == primary.id) {
+                map.insert(source.id, name.clone());
+                map.insert(source.secondary_id, name.clone());
+            }
+        }
+    }
+    map
+}
+
 pub fn wide_to_string(wide: &[u16]) -> String {
     let len = wide.iter().position(|c| *c == 0).unwrap_or(wide.len());
     String::from_utf16_lossy(&wide[..len])
@@ -358,6 +400,59 @@ impl Drop for Session<'_> {
 mod tests {
     use super::*;
     use std::mem::{offset_of, size_of};
+
+    fn source(id: u32, secondary_id: u32, name: &str, description: &str) -> SourceInfo {
+        SourceInfo { id, secondary_id, name: name.into(), description: description.into() }
+    }
+
+    // Data sources seen on the development machine (Hyper-V external switch + Wi-Fi)
+    fn sources() -> Vec<SourceInfo> {
+        vec![
+            source(207, 207, "vmswitch.sys", "VMS ExtMp #2"),
+            source(207, 25, "vmswitch.sys", "VMS ExtMp #2"),
+            source(220, 220, "e2fn.sys", "Intel(R) Ethernet Controller (3) I225-V"),
+            source(209, 209, "vmswitch.sys", "vEthernet (ymbihq.local)"),
+            source(209, 18, "VmsProxyHNic.sys", "Host vNic #2"),
+            source(218, 218, "vmswitch.sys", "Finances"),
+            source(212, 212, "vmswitch.sys", "vEthernet (Default Switch)"),
+            source(212, 15, "VmsProxyHNic.sys", "Host vNic"),
+            source(20, 20, "Netwtw14.sys", "Intel(R) Wi-Fi 6E AX210 160MHz"),
+        ]
+    }
+
+    fn interfaces() -> Vec<(String, String)> {
+        [
+            ("vEthernet (ymbihq.local)", "Hyper-V Virtual Ethernet Adapter #2"),
+            ("vEthernet (Default Switch)", "Hyper-V Virtual Ethernet Adapter"),
+            ("WiFi", "Intel(R) Wi-Fi 6E AX210 160MHz"),
+        ]
+        .iter()
+        .map(|(n, d)| (n.to_string(), d.to_string()))
+        .collect()
+    }
+
+    #[test]
+    fn components_map_to_interfaces() {
+        let map = component_interfaces(&sources(), &interfaces());
+        // Host vNIC port and its hidden secondary ID (our own frames are reported there)
+        assert_eq!(map[&209], "vEthernet (ymbihq.local)");
+        assert_eq!(map[&18], "vEthernet (ymbihq.local)");
+        assert_eq!(map[&212], "vEthernet (Default Switch)");
+        assert_eq!(map[&15], "vEthernet (Default Switch)");
+        // A NIC that is not behind a switch: matched by its adapter description
+        assert_eq!(map[&20], "WiFi");
+        // The physical NIC behind the switch, the switch itself and VM ports are not WinLLDP interfaces
+        for other in [220, 207, 25, 218] {
+            assert!(!map.contains_key(&other), "{other}");
+        }
+    }
+
+    #[test]
+    fn only_active_interfaces_are_mapped() {
+        let map = component_interfaces(&sources(), &interfaces()[..1]);
+        assert_eq!(map.len(), 2);
+        assert!(component_interfaces(&sources(), &[]).is_empty());
+    }
 
     // Offsets of the C structures (x64, natural alignment)
     #[test]

@@ -38,6 +38,7 @@ src/
 ├── sender.rs    # builds each interface's LLDPDU and sends it
 ├── capture.rs   # capture process (capture-subprocess) and capture start/stop/status
 ├── pcap.rs      # Npcap's wpcap.dll loaded at run time: send, filter, capture
+├── pktmon.rs    # Windows Packet Monitor API (PktMonApi.dll) loaded at run time: capture
 ├── sysinfo.rs   # interfaces (GetAdaptersAddresses), hostname, Windows version/edition
 ├── process.rs   # PID checks, uptime/memory/CPU for capture status
 ├── service.rs   # NSSM service commands and the service process (service-run)
@@ -52,18 +53,22 @@ tests/cli.rs     # integration tests against the real winlldp.exe
 ```
 Windows Service (NSSM) → winlldp.exe service-run
     ├── sender thread: LLDP on every active interface every LLDP_INTERVAL seconds
-    └── winlldp.exe capture-subprocess (detached): one Npcap handle per active
-        interface, filter "ether proto 0x88cc", writes neighbors.json
+    └── winlldp.exe capture-subprocess (detached): EtherType 0x88cc on every active
+        interface, through Packet Monitor (Windows 11 24H2+ / Server 2025) or Npcap;
+        one consumer deduplicates the frames and writes neighbors.json
 ```
 
 `capture start` spawns the same capture process and waits until it has written `capture.pid`
-(written once the Npcap handles are open), so failures are reported to the caller.
+(written once the capture is open), so failures are reported to the caller. The capture backend is
+chosen by `LLDP_CAPTURE_BACKEND` (`auto` tries Packet Monitor, then Npcap) and logged as
+`Capture backend: ...`. `cargo run --example pktmon_spike` lists Packet Monitor's data sources and
+streams LLDP frames, which helps diagnose interface mapping on other machines.
 
 ## Testing
 
 - Unit tests sit next to the code (`#[cfg(test)]`); `packet.rs` checks the exact bytes v1 sends.
 - `tests/cli.rs` copies `winlldp.exe` to a temporary directory and runs it, like v1's
-  `test_frozen_executable.py`. Capture tests skip without Npcap; the service test skips without
+  `test_frozen_executable.py`. Capture tests run with every available backend (Packet Monitor, Npcap) and skip without any; sending needs Npcap; the service test skips without
   administrator rights or NSSM, and when a `WinLLDP` service is already installed.
 
 ## Release lines

@@ -1,6 +1,6 @@
 # ADR 0001: Npcap in v2 — no bundling, native capture with Packet Monitor
 
-- **Status**: accepted (2026-10-22); task 2 spike done and successful (see [Spike results](#spike-results)); backend not implemented yet
+- **Status**: accepted (2026-10-22); task 2 implemented (see [Implementation](#implementation))
 - **Scope**: v2 (Rust, `master`). v1 keeps depending on Npcap through scapy.
 
 ## Context
@@ -117,7 +117,7 @@ drivers are likely to be blocked on Windows 11. Not an option.
 ## Task 2 plan
 
 1. ~~**Spike**~~: done, see above.
-2. **Backend**: a common capture interface used by `capture.rs`, with two implementations: Packet Monitor
+2. ~~**Backend**~~ (done): a common capture interface used by `capture.rs`, with two implementations: Packet Monitor
    (`src/pktmon.rs`, preferred when `PktMonApi.dll` provides the API, so the same executable still runs on
    older Windows) and Npcap (fallback). The Packet Monitor one:
    - one live session with every network-interface data source and the EtherType `0x88cc` constraint,
@@ -144,3 +144,24 @@ drivers are likely to be blocked on Windows 11. Not an option.
 - Two capture backends to maintain; the Npcap one remains for older Windows and as a fallback.
 - If the spike shows that LLDP frames do not reach Packet Monitor (e.g. without promiscuous mode), the
   decision is revisited and this ADR updated.
+
+## Implementation
+
+Done in `src/capture.rs` (backend selection, shared consumer, deduplication) and `src/pktmon.rs`
+(bindings and `component_interfaces`), as planned above. `LLDP_CAPTURE_BACKEND` (`auto` | `pktmon` |
+`npcap`) selects the backend; `auto` tries Packet Monitor, then Npcap. The capture log records
+`Capture backend: ...` and `capture status` shows it. `capture start` only fails when no backend can
+run, with a message naming both requirements.
+
+Validation on the development machine, both captures running at the same time for 75 s:
+
+- The 6 neighbors seen by both backends have the same key, interface and data.
+- **Packet Monitor saw 10 more**: every real device on the network, received on
+  `vEthernet (ymbihq.local)` (the host port of a Hyper-V external switch). Npcap, on that adapter, only
+  saw the host's own frames, because the switch does not deliver that multicast to the host vNIC's
+  Npcap handle, while Packet Monitor observes it inside the switch.
+- Integration tests run the end-to-end check (send our LLDP, find it in `neighbors.json`) once per
+  available backend.
+
+The toolchain is pinned in `rust-toolchain.toml` (Rust 1.99.1), so local builds and CI use the same
+compiler and clippy.

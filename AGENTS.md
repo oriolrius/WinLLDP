@@ -23,8 +23,8 @@ env.example     # example configuration
 ## Key Components
 
 - **LLDP**: IEEE 802.1AB TLVs (Chassis ID, Port ID, TTL, Port/System Description, System Name, Capabilities, Management Address) plus LLDP-MED (capabilities, hardware/firmware/software revision, model name); multicast 01:80:c2:00:00:0e.
-- **Npcap**: `src/pcap.rs` loads `wpcap.dll` at run time. Missing Npcap must always give a clear error, never a fake success. Npcap must not be bundled (license); the planned native capture backend (Packet Monitor API) is described in `docs/decisions/0001-npcap.md`.
-- **Configuration**: environment → `.env` (python-dotenv compatible parser in `src/dotenv.rs`) → defaults: `LLDP_INTERVAL`, `LLDP_INTERFACE`, `LLDP_TTL`, `LLDP_SYSTEM_NAME`, `LLDP_PORT_DESCRIPTION`, `LLDP_MANAGEMENT_ADDRESS`, `LLDP_NEIGHBORS_FILE`.
+- **Capture/send**: `src/pktmon.rs` (Windows Packet Monitor, capture only, Windows 11 24H2+ / Server 2025) and `src/pcap.rs` (Npcap's `wpcap.dll`, capture and send), both loaded at run time. Missing backends must always give a clear error, never a fake success. Npcap must not be bundled (license): see `docs/decisions/0001-npcap.md`.
+- **Configuration**: environment → `.env` (python-dotenv compatible parser in `src/dotenv.rs`) → defaults: `LLDP_INTERVAL`, `LLDP_INTERFACE`, `LLDP_TTL`, `LLDP_SYSTEM_NAME`, `LLDP_PORT_DESCRIPTION`, `LLDP_MANAGEMENT_ADDRESS`, `LLDP_NEIGHBORS_FILE`, `LLDP_CAPTURE_BACKEND` (read by the capture process).
 - **Files**: next to the executable: `neighbors.json`, `capture.pid`, `winlldp_capture.log`, `nssm_service.log`.
 
 ### Build Number Requirement

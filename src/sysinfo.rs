@@ -8,6 +8,8 @@ pub struct Interface {
     pub name: String,
     /// Adapter GUID, e.g. "{0F2B...}": the Npcap device is \Device\NPF_{GUID}
     pub adapter_name: String,
+    /// Adapter description, e.g. "Intel(R) Wi-Fi 6E AX210 160MHz"
+    pub description: String,
     pub mac: Option<String>,
     pub is_up: bool,
     pub ipv4: Vec<String>,
@@ -188,6 +190,7 @@ mod win {
             result.push(Interface {
                 name: unsafe { from_wide_ptr(a.FriendlyName) },
                 adapter_name: unsafe { from_cstr_ptr(a.AdapterName) },
+                description: unsafe { from_wide_ptr(a.Description) },
                 mac: Some(mac),
                 is_up: a.OperStatus == IfOperStatusUp,
                 ipv4,
